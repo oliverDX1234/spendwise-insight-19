@@ -1,65 +1,50 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { X, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCategories } from "@/hooks/useCategories";
+import { CreateExpenseData } from "@/hooks/useExpenses";
 
 interface Product {
   name: string;
   quantity: number;
-  price: number;
-}
-
-interface Expense {
-  amount: number;
-  category: string;
-  description: string;
-  date: string;
-  products: Product[];
+  price_per_unit: number;
 }
 
 interface AddExpenseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddExpense: (expense: Expense) => void;
+  onAddExpense: (expense: CreateExpenseData) => Promise<void>;
 }
-
-const categories = [
-  "Food & Dining",
-  "Utilities", 
-  "Transportation",
-  "Entertainment",
-  "Shopping",
-  "Healthcare",
-  "Education",
-  "Travel",
-  "Insurance",
-  "Other"
-];
 
 export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpenseDialogProps) {
   const { toast } = useToast();
+  const { categories, loading: categoriesLoading } = useCategories();
+
+  // Form state
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [products, setProducts] = useState<Product[]>([
-    { name: "", quantity: 1, price: 0 }
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringInterval, setRecurringInterval] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Product management functions
   const addProduct = () => {
-    setProducts([...products, { name: "", quantity: 1, price: 0 }]);
+    setProducts([...products, { name: "", quantity: 1, price_per_unit: 0 }]);
   };
 
   const removeProduct = (index: number) => {
-    if (products.length > 1) {
-      setProducts(products.filter((_, i) => i !== index));
-    }
+    setProducts(products.filter((_, i) => i !== index));
   };
 
   const updateProduct = (index: number, field: keyof Product, value: string | number) => {
@@ -69,43 +54,61 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
   };
 
   const calculateTotal = () => {
-    return products.reduce((sum, product) => sum + (product.quantity * product.price), 0);
+    return products.reduce((total, product) => total + (product.quantity * product.price_per_unit), 0);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const resetForm = () => {
+    setAmount("");
+    setCategoryId("");
+    setDescription("");
+    setDate(new Date().toISOString().split('T')[0]);
+    setProducts([]);
+    setIsRecurring(false);
+    setRecurringInterval("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!amount || !category || !description) {
+    if (!amount || !categoryId) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
+        title: "Error",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
 
-    const validProducts = products.filter(p => p.name.trim() !== "");
-    const calculatedAmount = validProducts.length > 0 ? calculateTotal() : parseFloat(amount);
+    if (isRecurring && !recurringInterval) {
+      toast({
+        title: "Error",
+        description: "Please select a recurring interval",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    onAddExpense({
-      amount: calculatedAmount,
-      category,
-      description,
-      date,
-      products: validProducts,
-    });
+    setIsSubmitting(true);
 
-    // Reset form
-    setAmount("");
-    setCategory("");
-    setDescription("");
-    setDate(new Date().toISOString().split('T')[0]);
-    setProducts([{ name: "", quantity: 1, price: 0 }]);
+    try {
+      const expenseData: CreateExpenseData = {
+        amount: parseFloat(amount),
+        category_id: categoryId,
+        description: description || undefined,
+        expense_date: date,
+        is_recurring: isRecurring,
+        recurring_interval: isRecurring ? recurringInterval : undefined,
+        products: products.length > 0 ? products : undefined
+      };
 
-    toast({
-      title: "Expense Added",
-      description: "Your expense has been successfully recorded.",
-    });
+      await onAddExpense(expenseData);
+      resetForm();
+      onOpenChange(false);
+    } catch (error) {
+      // Error is handled in the hook
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -113,9 +116,6 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Expense</DialogTitle>
-          <DialogDescription>
-            Record a new expense with detailed information and product breakdown.
-          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -129,19 +129,28 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                disabled={isSubmitting}
                 required
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="category">Category *</Label>
-              <Select value={category} onValueChange={setCategory} required>
+              <Select value={categoryId} onValueChange={setCategoryId} disabled={categoriesLoading || isSubmitting}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: cat.color }}
+                        />
+                        {cat.name}
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -154,90 +163,126 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                disabled={isSubmitting}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
+              <Label htmlFor="description">Description</Label>
               <Input
                 id="description"
                 placeholder="Brief description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                required
+                disabled={isSubmitting}
               />
+            </div>
+
+            {/* Recurring Options */}
+            <div className="space-y-4 md:col-span-2">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="recurring" 
+                  checked={isRecurring} 
+                  onCheckedChange={setIsRecurring}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor="recurring">Make this a recurring expense</Label>
+              </div>
+              
+              {isRecurring && (
+                <div className="space-y-2">
+                  <Label htmlFor="interval">Recurring Interval</Label>
+                  <Select value={recurringInterval} onValueChange={setRecurringInterval} disabled={isSubmitting}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select interval" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Product Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Product Details (Optional)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {products.map((product, index) => (
-                <div key={index} className="flex gap-3 items-end">
-                  <div className="flex-1">
-                    <Label>Product Name</Label>
-                    <Input
-                      placeholder="Product name"
-                      value={product.name}
-                      onChange={(e) => updateProduct(index, 'name', e.target.value)}
-                    />
-                  </div>
-                  <div className="w-24">
-                    <Label>Qty</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={product.quantity}
-                      onChange={(e) => updateProduct(index, 'quantity', parseInt(e.target.value) || 1)}
-                    />
-                  </div>
-                  <div className="w-32">
-                    <Label>Price Each</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={product.price}
-                      onChange={(e) => updateProduct(index, 'price', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => removeProduct(index)}
-                    disabled={products.length === 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              
-              <div className="flex justify-between items-center pt-4 border-t">
-                <Button type="button" variant="outline" onClick={addProduct}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Product
-                </Button>
-                
-                {products.some(p => p.name.trim() !== "") && (
-                  <div className="text-lg font-semibold">
-                    Total: ${calculateTotal().toFixed(2)}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Products Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Products (Optional)</h4>
+              <Button type="button" variant="outline" size="sm" onClick={addProduct} disabled={isSubmitting}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Product
+              </Button>
+            </div>
 
-          <div className="flex gap-3 justify-end">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            {products.map((product, index) => (
+              <Card key={index} className="p-4">
+                <CardContent className="p-0">
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1 space-y-2">
+                      <Label>Product Name</Label>
+                      <Input
+                        placeholder="Product name"
+                        value={product.name}
+                        onChange={(e) => updateProduct(index, 'name', e.target.value)}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div className="w-24 space-y-2">
+                      <Label>Quantity</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={product.quantity}
+                        onChange={(e) => updateProduct(index, 'quantity', parseInt(e.target.value) || 1)}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div className="w-32 space-y-2">
+                      <Label>Price Each</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={product.price_per_unit}
+                        onChange={(e) => updateProduct(index, "price_per_unit", parseFloat(e.target.value) || 0)}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeProduct(index)}
+                      disabled={isSubmitting}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {products.length > 0 && (
+              <div className="text-right">
+                <div className="text-lg font-semibold">
+                  Product Total: ${calculateTotal().toFixed(2)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-gradient-primary">
-              Add Expense
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add Expense"}
             </Button>
           </div>
         </form>

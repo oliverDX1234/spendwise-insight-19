@@ -1,62 +1,80 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Settings } from "lucide-react";
-import heroImage from "@/assets/hero-dashboard.jpg";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Plus, Calendar, Tag, Settings, TrendingUp, DollarSign, CreditCard, Target } from "lucide-react";
 import { ExpenseCard } from "@/components/ExpenseCard";
-import { QuickStats } from "@/components/QuickStats";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
+import { QuickStats } from "@/components/QuickStats";
+import { useExpenses } from "@/hooks/useExpenses";
+import { useBudgets } from "@/hooks/useBudgets";
+import { useAuth } from "@/hooks/useAuth";
+import { Navigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
-// Mock data for demonstration
-const mockExpenses = [
-  {
-    id: "1",
-    amount: 45.99,
-    category: "Food & Dining",
-    description: "Lunch at Cafe Roma",
-    date: new Date().toISOString().split('T')[0],
-    products: [{ name: "Pasta", quantity: 1, price: 18.99 }, { name: "Coffee", quantity: 2, price: 13.50 }]
-  },
-  {
-    id: "2", 
-    amount: 120.00,
-    category: "Utilities",
-    description: "Monthly internet bill",
-    date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-    products: [{ name: "Internet Service", quantity: 1, price: 120.00 }]
-  },
-  {
-    id: "3",
-    amount: 85.50,
-    category: "Transportation",
-    description: "Gas station fill-up",
-    date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
-    products: [{ name: "Gasoline", quantity: 12, price: 7.12 }]
-  }
-];
-
-const Index = () => {
+export default function Index() {
+  const { user, loading: authLoading } = useAuth();
+  const { expenses, loading: expensesLoading, createExpense, deleteExpense } = useExpenses();
+  const { budgets, loading: budgetsLoading } = useBudgets();
   const [showAddExpense, setShowAddExpense] = useState(false);
-  const [expenses, setExpenses] = useState(mockExpenses);
+  const { toast } = useToast();
 
-  const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const monthlyBudget = 2000;
-  const remainingBudget = monthlyBudget - totalSpent;
+  // Redirect to login if not authenticated
+  if (!authLoading && !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const handleAddExpense = async (expenseData: any) => {
+    try {
+      await createExpense(expenseData);
+    } catch (error) {
+      // Error is handled in the hook
+    }
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    try {
+      await deleteExpense(expenseId);
+    } catch (error) {
+      // Error is handled in the hook
+    }
+  };
+
+  // Calculate stats from real data
+  const totalSpent = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const currentMonthExpenses = expenses.filter(expense => {
+    const expenseDate = new Date(expense.expense_date);
+    const now = new Date();
+    return expenseDate.getMonth() === now.getMonth() && 
+           expenseDate.getFullYear() === now.getFullYear();
+  });
+  
+  const monthlySpent = currentMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const totalBudget = budgets.reduce((sum, budget) => sum + Number(budget.amount), 0);
+  const remainingBudget = totalBudget - monthlySpent;
 
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-primary py-20">
-        <div className="absolute inset-0 opacity-10">
-          <img src={heroImage} alt="Financial Dashboard" className="h-full w-full object-cover" />
-        </div>
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-primary/80 py-20">
         <div className="container relative mx-auto px-4">
           <div className="mx-auto max-w-4xl text-center">
-            <h1 className="mb-6 text-5xl font-bold text-primary-foreground">
-              Welcome to <span className="text-white">SpendWise</span>
+            <h1 className="mb-6 text-5xl font-bold text-white">
+              Welcome to <span className="text-primary-foreground">SpendWise</span>
             </h1>
-            <p className="mb-8 text-xl text-primary-foreground/90">
+            <p className="mb-8 text-xl text-white/90">
               Your smart expense tracker for better financial decisions
             </p>
             <div className="flex flex-wrap justify-center gap-4">
@@ -64,13 +82,13 @@ const Index = () => {
                 size="lg" 
                 variant="secondary"
                 onClick={() => setShowAddExpense(true)}
-                className="shadow-elevated"
+                className="shadow-lg"
               >
-                <PlusCircle className="mr-2 h-5 w-5" />
-                Add First Expense
+                <Plus className="mr-2 h-5 w-5" />
+                Add Expense
               </Button>
               <Button size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
-                <BarChart3 className="mr-2 h-5 w-5" />
+                <TrendingUp className="mr-2 h-5 w-5" />
                 View Analytics
               </Button>
             </div>
@@ -83,77 +101,79 @@ const Index = () => {
         <div className="container mx-auto px-4">
           {/* Quick Stats */}
           <QuickStats 
-            totalSpent={totalSpent}
-            remainingBudget={remainingBudget}
-            monthlyBudget={monthlyBudget}
+            totalSpent={totalSpent} 
+            remainingBudget={remainingBudget} 
             expenseCount={expenses.length}
+            loading={expensesLoading || budgetsLoading}
           />
-
+          
           {/* Main Content Grid */}
-          <div className="mt-8 grid gap-8 lg:grid-cols-3">
+          <div className="mt-8 grid lg:grid-cols-3 gap-6">
             {/* Recent Expenses */}
-            <div className="lg:col-span-2">
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-semibold">Recent Expenses</h2>
-                <Button 
-                  onClick={() => setShowAddExpense(true)}
-                  className="bg-gradient-primary"
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Expense
-                </Button>
-              </div>
-              
-              {expenses.length > 0 ? (
-                <div className="space-y-4">
-                  {expenses.map((expense) => (
-                    <ExpenseCard key={expense.id} expense={expense} />
-                  ))}
-                </div>
-              ) : (
-                <Card className="border-dashed">
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <DollarSign className="mb-4 h-12 w-12 text-muted-foreground" />
-                    <h3 className="mb-2 text-lg font-semibold">No expenses yet</h3>
-                    <p className="mb-4 text-center text-muted-foreground">
-                      Start tracking your expenses to gain insights into your spending habits.
-                    </p>
-                    <Button onClick={() => setShowAddExpense(true)}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Your First Expense
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <div>
+                    <CardTitle>Recent Expenses</CardTitle>
+                    <CardDescription>Your latest transactions</CardDescription>
+                  </div>
+                  <Button onClick={() => setShowAddExpense(true)} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Expense
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {expensesLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="animate-pulse bg-muted h-24 rounded-lg"></div>
+                      ))}
+                    </div>
+                  ) : expenses.slice(0, 5).length > 0 ? (
+                    expenses.slice(0, 5).map((expense) => (
+                      <ExpenseCard 
+                        key={expense.id} 
+                        expense={expense}
+                        onDelete={handleDeleteExpense}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No expenses yet. Add your first expense to get started!</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Budget Overview */}
-              <Card className="bg-gradient-card shadow-card">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <TrendingUp className="mr-2 h-5 w-5 text-success" />
+                    <Target className="mr-2 h-5 w-5" />
                     Budget Overview
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div>
+                    <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Monthly Budget</span>
-                        <span className="font-semibold">${monthlyBudget.toFixed(2)}</span>
+                        <span>Spent</span>
+                        <span>${monthlySpent.toFixed(2)}</span>
                       </div>
-                      <div className="mt-2 h-2 rounded-full bg-muted">
-                        <div 
-                          className="h-2 rounded-full bg-gradient-success" 
-                          style={{ width: `${Math.min((totalSpent / monthlyBudget) * 100, 100)}%` }}
-                        />
+                      <Progress value={totalBudget > 0 ? (monthlySpent / totalBudget) * 100 : 0} className="h-2" />
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>${monthlySpent.toFixed(2)} of ${totalBudget.toFixed(2)}</span>
+                        <span>{totalBudget > 0 ? Math.round((monthlySpent / totalBudget) * 100) : 0}%</span>
                       </div>
                     </div>
+                    
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Remaining</span>
-                      <span className={`font-semibold ${remainingBudget >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      <span className={`font-semibold ${remainingBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         ${Math.abs(remainingBudget).toFixed(2)}
                       </span>
                     </div>
@@ -162,7 +182,7 @@ const Index = () => {
               </Card>
 
               {/* Quick Actions */}
-              <Card className="shadow-card">
+              <Card>
                 <CardHeader>
                   <CardTitle>Quick Actions</CardTitle>
                   <CardDescription>Manage your expenses efficiently</CardDescription>
@@ -173,7 +193,7 @@ const Index = () => {
                     View Calendar
                   </Button>
                   <Button variant="outline" className="w-full justify-start">
-                    <PieChart className="mr-2 h-4 w-4" />
+                    <Tag className="mr-2 h-4 w-4" />
                     Categories
                   </Button>
                   <Button variant="outline" className="w-full justify-start">
@@ -191,17 +211,8 @@ const Index = () => {
       <AddExpenseDialog 
         open={showAddExpense}
         onOpenChange={setShowAddExpense}
-        onAddExpense={(expense) => {
-          const newExpense = {
-            ...expense,
-            id: Date.now().toString(),
-          };
-          setExpenses(prev => [newExpense, ...prev]);
-          setShowAddExpense(false);
-        }}
+        onAddExpense={handleAddExpense}
       />
     </div>
   );
-};
-
-export default Index;
+}
