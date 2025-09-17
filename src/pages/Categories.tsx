@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useCategories, CreateCategoryData } from '@/hooks/useCategories';
+import { useCategories, CreateCategoryData, Category } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,13 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Trash2, Edit, Plus, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { EditCategoryDialog } from '@/components/EditCategoryDialog';
+import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 
 export default function Categories() {
-  const { categories, loading, createCategory, deleteCategory } = useCategories();
+  const { categories, loading, createCategory, updateCategory, deleteCategory } = useCategories();
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState('#6B7280');
+  
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -40,10 +47,21 @@ export default function Categories() {
     }
   };
 
-  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
-    if (window.confirm(`Are you sure you want to delete the category "${categoryName}"?`)) {
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteCategory = (category: Category) => {
+    setDeletingCategory(category);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deletingCategory) {
       try {
-        await deleteCategory(categoryId);
+        await deleteCategory(deletingCategory.id);
+        setDeletingCategory(null);
       } catch (error) {
         // Error is handled by the hook
       }
@@ -160,13 +178,17 @@ export default function Categories() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditCategory(category)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteCategory(category.id, category.name)}
+                            onClick={() => handleDeleteCategory(category)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -226,6 +248,21 @@ export default function Categories() {
           </CardContent>
         </Card>
       </div>
+
+      <EditCategoryDialog
+        category={editingCategory}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onUpdateCategory={updateCategory}
+      />
+
+      <DeleteConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Delete Category"
+        description={`Are you sure you want to delete the category "${deletingCategory?.name}"? This action cannot be undone.`}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

@@ -80,6 +80,30 @@ export function useCategories() {
     }
   };
 
+  const updateCategory = async (categoryId: string, categoryData: { name: string; color: string }) => {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update(categoryData)
+        .eq('id', categoryId);
+
+      if (error) throw error;
+
+      await fetchCategories();
+      toast({
+        title: "Success",
+        description: "Category updated successfully"
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive"
+      });
+      throw err;
+    }
+  };
+
   const deleteCategory = async (categoryId: string) => {
     try {
       const { error } = await supabase
@@ -114,6 +138,7 @@ export function useCategories() {
     error,
     fetchCategories,
     createCategory,
+    updateCategory,
     deleteCategory
   };
 }

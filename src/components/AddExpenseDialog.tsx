@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { X, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCategories } from "@/hooks/useCategories";
+import { useProducts } from "@/hooks/useProducts";
 import { CreateExpenseData } from "@/hooks/useExpenses";
 
 interface Product {
@@ -27,6 +28,7 @@ interface AddExpenseDialogProps {
 export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpenseDialogProps) {
   const { toast } = useToast();
   const { categories, loading: categoriesLoading } = useCategories();
+  const { getProductsByCategory } = useProducts();
 
   // Form state
   const [amount, setAmount] = useState("");
@@ -110,6 +112,8 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
       setIsSubmitting(false);
     }
   };
+
+  const existingProducts = categoryId ? getProductsByCategory(categoryId) : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -223,16 +227,40 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
             {products.map((product, index) => (
               <Card key={index} className="p-4">
                 <CardContent className="p-0">
-                  <div className="flex gap-3 items-end">
-                    <div className="flex-1 space-y-2">
-                      <Label>Product Name</Label>
-                      <Input
-                        placeholder="Product name"
-                        value={product.name}
-                        onChange={(e) => updateProduct(index, 'name', e.target.value)}
-                        disabled={isSubmitting}
-                      />
-                    </div>
+                   <div className="flex gap-3 items-end">
+                     <div className="flex-1 space-y-2">
+                       <Label>Product Name</Label>
+                       {existingProducts.length > 0 ? (
+                         <Select
+                           value={product.name}
+                           onValueChange={(value) => {
+                             const existingProduct = existingProducts.find(p => p.name === value);
+                             updateProduct(index, 'name', value);
+                             if (existingProduct && existingProduct.default_price) {
+                               updateProduct(index, 'price_per_unit', existingProduct.default_price);
+                             }
+                           }}
+                         >
+                           <SelectTrigger>
+                             <SelectValue placeholder="Select or type product" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             {existingProducts.map((p) => (
+                               <SelectItem key={p.id} value={p.name}>
+                                 {p.name} {p.default_price && `($${p.default_price})`}
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       ) : (
+                         <Input
+                           placeholder="Product name"
+                           value={product.name}
+                           onChange={(e) => updateProduct(index, 'name', e.target.value)}
+                           disabled={isSubmitting}
+                         />
+                       )}
+                     </div>
                     <div className="w-24 space-y-2">
                       <Label>Quantity</Label>
                       <Input

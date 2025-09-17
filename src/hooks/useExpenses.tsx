@@ -167,6 +167,91 @@ export function useExpenses() {
     }
   };
 
+  const updateExpense = async (expenseId: string, expenseData: any) => {
+    try {
+      const { error: expenseError } = await supabase
+        .from('expenses')
+        .update({
+          amount: expenseData.amount,
+          category_id: expenseData.category_id,
+          expense_date: expenseData.expense_date,
+          description: expenseData.description
+        })
+        .eq('id', expenseId);
+
+      if (expenseError) throw expenseError;
+
+      // Handle products if provided
+      if (expenseData.products && expenseData.products.length > 0) {
+        // Delete existing expense_products
+        const { error: deleteError } = await supabase
+          .from('expense_products')
+          .delete()
+          .eq('expense_id', expenseId);
+
+        if (deleteError) throw deleteError;
+
+        // Create new products and expense_products
+        for (const productData of expenseData.products) {
+          // Check if product exists
+          let { data: existingProduct } = await supabase
+            .from('products')
+            .select('id')
+            .eq('name', productData.name)
+            .eq('category_id', expenseData.category_id)
+            .single();
+
+          let productId = existingProduct?.id;
+
+          // Create product if it doesn't exist
+          if (!existingProduct) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('User not authenticated');
+
+            const { data: newProduct, error: productError } = await supabase
+              .from('products')
+              .insert({
+                name: productData.name,
+                category_id: expenseData.category_id,
+                user_id: user.id,
+                default_price: productData.price_per_unit
+              })
+              .select('id')
+              .single();
+
+            if (productError) throw productError;
+            productId = newProduct.id;
+          }
+
+          // Create expense_product relationship
+          const { error: expenseProductError } = await supabase
+            .from('expense_products')
+            .insert({
+              expense_id: expenseId,
+              product_id: productId,
+              quantity: productData.quantity,
+              price_per_unit: productData.price_per_unit
+            });
+
+          if (expenseProductError) throw expenseProductError;
+        }
+      }
+
+      await fetchExpenses();
+      toast({
+        title: "Success",
+        description: "Expense updated successfully"
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive"
+      });
+      throw err;
+    }
+  };
+
   const deleteExpense = async (expenseId: string) => {
     try {
       const { error } = await supabase
@@ -227,6 +312,7 @@ export function useExpenses() {
     error,
     fetchExpenses,
     createExpense,
+    updateExpense,
     deleteExpense,
     getExpensesByPeriod
   };

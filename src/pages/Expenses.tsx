@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react"
 import { format } from "date-fns"
 import { Search, Filter, ArrowUpDown, ChevronDown } from "lucide-react"
-import { useExpenses } from "@/hooks/useExpenses"
+import { useExpenses, Expense } from "@/hooks/useExpenses"
 import { useCategories } from "@/hooks/useCategories"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,13 +28,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { EditExpenseDialog } from "@/components/EditExpenseDialog"
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog"
 
 type SortField = 'expense_date' | 'amount' | 'description' | 'category'
 type SortDirection = 'asc' | 'desc'
 type TimePeriod = 'all' | 'today' | 'week' | 'month' | 'year'
 
 export default function Expenses() {
-  const { expenses, loading, deleteExpense } = useExpenses()
+  const { expenses, loading, updateExpense, deleteExpense } = useExpenses()
   const { categories } = useCategories()
   
   const [searchTerm, setSearchTerm] = useState("")
@@ -43,6 +45,11 @@ export default function Expenses() {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all")
   const [sortField, setSortField] = useState<SortField>('expense_date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   // Get unique products from all expenses
   const allProducts = useMemo(() => {
@@ -147,6 +154,27 @@ export default function Expenses() {
     return sortDirection === 'asc' ? 
       <ArrowUpDown className="h-4 w-4 rotate-180" /> : 
       <ArrowUpDown className="h-4 w-4" />
+  }
+
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpense(expense)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleDeleteExpense = (expense: Expense) => {
+    setDeletingExpense(expense)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (deletingExpense) {
+      try {
+        await deleteExpense(deletingExpense.id)
+        setDeletingExpense(null)
+      } catch (error) {
+        // Error is handled by the hook
+      }
+    }
   }
 
   if (loading) {
@@ -335,10 +363,12 @@ export default function Expenses() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditExpense(expense)}>
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-destructive"
-                          onClick={() => deleteExpense(expense.id)}
+                          onClick={() => handleDeleteExpense(expense)}
                         >
                           Delete
                         </DropdownMenuItem>
@@ -357,6 +387,21 @@ export default function Expenses() {
           )}
         </CardContent>
       </Card>
+
+      <EditExpenseDialog
+        expense={editingExpense}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onUpdateExpense={updateExpense}
+      />
+
+      <DeleteConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Delete Expense"
+        description={`Are you sure you want to delete this expense? This action cannot be undone.`}
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }
