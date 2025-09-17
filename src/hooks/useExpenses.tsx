@@ -119,21 +119,35 @@ export function useExpenses() {
         for (const product of expenseData.products) {
           let productId = product.product_id;
 
-          // Create product if it doesn't exist
+          // Check if product exists first, then create if it doesn't
           if (!productId) {
-            const { data: newProduct, error: productError } = await supabase
+            // Try to find existing product
+            const { data: existingProduct } = await supabase
               .from('products')
-              .insert({
-                user_id: user.id,
-                category_id: expenseData.category_id,
-                name: product.name,
-                default_price: product.price_per_unit
-              })
-              .select()
-              .single();
+              .select('id')
+              .eq('name', product.name)
+              .eq('category_id', expenseData.category_id)
+              .eq('user_id', user.id)
+              .maybeSingle();
 
-            if (productError) throw productError;
-            productId = newProduct.id;
+            if (existingProduct) {
+              productId = existingProduct.id;
+            } else {
+              // Create new product only if it doesn't exist
+              const { data: newProduct, error: productError } = await supabase
+                .from('products')
+                .insert({
+                  user_id: user.id,
+                  category_id: expenseData.category_id,
+                  name: product.name,
+                  default_price: product.price_per_unit
+                })
+                .select()
+                .single();
+
+              if (productError) throw productError;
+              productId = newProduct.id;
+            }
           }
 
           // Create expense_product relationship
