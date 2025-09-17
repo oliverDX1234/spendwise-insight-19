@@ -14,11 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
-      profiles: {
+      users: {
         Row: {
           avatar_url: string | null
           created_at: string
           date_of_birth: string | null
+          email: string
           full_name: string
           id: string
           subscription_expires_at: string | null
@@ -30,6 +31,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           date_of_birth?: string | null
+          email: string
           full_name: string
           id?: string
           subscription_expires_at?: string | null
@@ -41,6 +43,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           date_of_birth?: string | null
+          email?: string
           full_name?: string
           id?: string
           subscription_expires_at?: string | null
