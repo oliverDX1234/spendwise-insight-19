@@ -17,6 +17,8 @@ interface Product {
   name: string;
   quantity: number;
   price_per_unit: number;
+  isExisting: boolean;
+  existingProductId?: string;
 }
 
 interface AddExpenseDialogProps {
@@ -42,31 +44,43 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
 
   // Product management functions
   const addProduct = () => {
-    setProducts([...products, { name: "", quantity: 1, price_per_unit: 0 }]);
+    setProducts([...products, { name: "", quantity: 1, price_per_unit: 0, isExisting: false }]);
   };
 
   const removeProduct = (index: number) => {
     setProducts(products.filter((_, i) => i !== index));
   };
 
-  const updateProduct = (index: number, field: keyof Product, value: string | number) => {
+  const updateProduct = (index: number, field: keyof Product, value: string | number | boolean) => {
     const updatedProducts = [...products];
     updatedProducts[index] = { ...updatedProducts[index], [field]: value };
     setProducts(updatedProducts);
   };
 
-  const validateProductName = (name: string, index: number) => {
-    // Check if this product name already exists in current products list (excluding current index)
-    const duplicateIndex = products.findIndex((p, i) => i !== index && p.name.toLowerCase() === name.toLowerCase());
-    if (duplicateIndex !== -1) {
-      toast({
-        title: "Duplicate Product",
-        description: "This product is already added to the expense",
-        variant: "destructive"
-      });
-      return false;
+  const toggleProductType = (index: number, isExisting: boolean) => {
+    const updatedProducts = [...products];
+    updatedProducts[index] = { 
+      ...updatedProducts[index], 
+      isExisting,
+      name: "",
+      price_per_unit: 0,
+      existingProductId: undefined
+    };
+    setProducts(updatedProducts);
+  };
+
+  const selectExistingProduct = (index: number, productId: string) => {
+    const existingProduct = existingProducts.find(p => p.id === productId);
+    if (existingProduct) {
+      const updatedProducts = [...products];
+      updatedProducts[index] = {
+        ...updatedProducts[index],
+        name: existingProduct.name,
+        price_per_unit: existingProduct.default_price || 0,
+        existingProductId: productId
+      };
+      setProducts(updatedProducts);
     }
-    return true;
   };
 
   const calculateTotal = () => {
@@ -114,7 +128,12 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
         expense_date: date,
         is_recurring: isRecurring,
         recurring_interval: isRecurring ? recurringInterval : undefined,
-        products: products.length > 0 ? products : undefined
+        products: products.length > 0 ? products.map(p => ({
+          product_id: p.existingProductId,
+          name: p.name,
+          quantity: p.quantity,
+          price_per_unit: p.price_per_unit
+        })) : undefined
       };
 
       await onAddExpense(expenseData);
@@ -240,67 +259,108 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
 
             {products.map((product, index) => (
               <Card key={index} className="p-4">
-                <CardContent className="p-0">
-                   <div className="flex gap-3 items-end">
-                     <div className="flex-1 space-y-2">
-                       <Label>Product Name</Label>
-                        <div className="space-y-2">
+                <CardContent className="p-0 space-y-4">
+                  {/* Toggle between New/Existing */}
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      type="button"
+                      variant={!product.isExisting ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleProductType(index, false)}
+                      disabled={isSubmitting}
+                    >
+                      New Product
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={product.isExisting ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleProductType(index, true)}
+                      disabled={isSubmitting || existingProducts.length === 0}
+                    >
+                      Existing Product
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-3 items-end">
+                    {product.isExisting ? (
+                      // Existing Product Selection
+                      <>
+                        <div className="flex-1 space-y-2">
+                          <Label>Select Product</Label>
                           <Select
-                            value={product.name}
-                            onValueChange={(value) => {
-                              if (validateProductName(value, index)) {
-                                const existingProduct = existingProducts.find(p => p.name === value);
-                                updateProduct(index, 'name', value);
-                                if (existingProduct && existingProduct.default_price) {
-                                  updateProduct(index, 'price_per_unit', existingProduct.default_price);
-                                }
-                              }
-                            }}
+                            value={product.existingProductId || ""}
+                            onValueChange={(value) => selectExistingProduct(index, value)}
+                            disabled={isSubmitting}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select existing product" />
                             </SelectTrigger>
                             <SelectContent>
                               {existingProducts.map((p) => (
-                                <SelectItem key={p.id} value={p.name}>
+                                <SelectItem key={p.id} value={p.id}>
                                   {p.name} {p.default_price && `($${p.default_price})`}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div className="w-24 space-y-2">
+                          <Label>Quantity</Label>
                           <Input
-                            placeholder="Or type new product name"
-                            value={product.name}
-                            onChange={(e) => {
-                              if (validateProductName(e.target.value, index)) {
-                                updateProduct(index, 'name', e.target.value);
-                              }
-                            }}
+                            type="number"
+                            min="1"
+                            value={product.quantity}
+                            onChange={(e) => updateProduct(index, 'quantity', parseInt(e.target.value) || 1)}
                             disabled={isSubmitting}
                           />
                         </div>
-                     </div>
-                    <div className="w-24 space-y-2">
-                      <Label>Quantity</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={product.quantity}
-                        onChange={(e) => updateProduct(index, 'quantity', parseInt(e.target.value) || 1)}
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                    <div className="w-32 space-y-2">
-                      <Label>Price Each</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={product.price_per_unit}
-                        onChange={(e) => updateProduct(index, "price_per_unit", parseFloat(e.target.value) || 0)}
-                        disabled={isSubmitting}
-                      />
-                    </div>
+                        <div className="w-32 space-y-2">
+                          <Label>Price Each</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={product.price_per_unit}
+                            disabled={true}
+                            className="bg-muted"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      // New Product Creation
+                      <>
+                        <div className="flex-1 space-y-2">
+                          <Label>Product Name</Label>
+                          <Input
+                            placeholder="Enter product name"
+                            value={product.name}
+                            onChange={(e) => updateProduct(index, 'name', e.target.value)}
+                            disabled={isSubmitting}
+                          />
+                        </div>
+                        <div className="w-24 space-y-2">
+                          <Label>Quantity</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={product.quantity}
+                            onChange={(e) => updateProduct(index, 'quantity', parseInt(e.target.value) || 1)}
+                            disabled={isSubmitting}
+                          />
+                        </div>
+                        <div className="w-32 space-y-2">
+                          <Label>Price Each</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={product.price_per_unit}
+                            onChange={(e) => updateProduct(index, "price_per_unit", parseFloat(e.target.value) || 0)}
+                            disabled={isSubmitting}
+                          />
+                        </div>
+                      </>
+                    )}
                     <Button
                       type="button"
                       variant="outline"
