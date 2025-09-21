@@ -6,8 +6,10 @@ import { Plus, Calendar, Tag, Settings, TrendingUp, DollarSign, CreditCard, Targ
 import { ExpenseCard } from "@/components/ExpenseCard";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { QuickStats } from "@/components/QuickStats";
+import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useBudgets } from "@/hooks/useBudgets";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -16,8 +18,15 @@ export default function Index() {
   const { user, loading: authLoading } = useAuth();
   const { expenses, loading: expensesLoading, createExpense, deleteExpense } = useExpenses();
   const { budgets, loading: budgetsLoading } = useBudgets();
+  const { needsOnboarding, isLoading: onboardingLoading } = useOnboarding();
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { toast } = useToast();
+
+  // Show onboarding if needed
+  if (!onboardingLoading && needsOnboarding && !showOnboarding) {
+    setShowOnboarding(true);
+  }
 
   // Redirect to login if not authenticated
   if (!authLoading && !user) {
@@ -212,6 +221,15 @@ export default function Index() {
         open={showAddExpense}
         onOpenChange={setShowAddExpense}
         onAddExpense={handleAddExpense}
+      />
+
+      {/* Onboarding Dialog */}
+      <OnboardingDialog 
+        isOpen={showOnboarding}
+        onComplete={() => {
+          setShowOnboarding(false);
+          window.location.reload(); // Refresh to update user subscription state
+        }}
       />
     </div>
   );
