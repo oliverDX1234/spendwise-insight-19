@@ -58,6 +58,48 @@ export type Database = {
           },
         ]
       }
+      cards: {
+        Row: {
+          card_holder_name: string
+          card_number: string
+          card_type: string | null
+          created_at: string
+          cvc: string
+          expiry_month: number
+          expiry_year: number
+          id: string
+          is_default: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          card_holder_name: string
+          card_number: string
+          card_type?: string | null
+          created_at?: string
+          cvc: string
+          expiry_month: number
+          expiry_year: number
+          id?: string
+          is_default?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          card_holder_name?: string
+          card_number?: string
+          card_type?: string | null
+          created_at?: string
+          cvc?: string
+          expiry_month?: number
+          expiry_year?: number
+          id?: string
+          is_default?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           color: string | null
