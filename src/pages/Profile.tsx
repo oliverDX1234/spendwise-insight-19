@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Lock, CreditCard, Upload, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCards, maskCardNumber } from "@/hooks/useCards";
+import { useAvatarUpload, validateImageFile } from "@/hooks/useAvatarUpload";
 import { AddCardDialog } from "@/components/AddCardDialog";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,11 +31,12 @@ interface UserProfile {
 export default function Profile() {
   const { user, updatePassword } = useAuth();
   const { cards, deleteCard } = useCards();
+  const { updateProfileAvatar, uploading } = useAvatarUpload();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Personal info state
   const [fullName, setFullName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
   
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -67,13 +69,12 @@ export default function Profile() {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || "");
-      setAvatarUrl(profile.avatar_url || "");
     }
   }, [profile]);
 
   // Update profile mutation
   const updateProfile = useMutation({
-    mutationFn: async (profileData: { full_name: string; avatar_url?: string }) => {
+    mutationFn: async (profileData: { full_name: string }) => {
       if (!user?.id) throw new Error("User not authenticated");
 
       const { data, error } = await supabase
@@ -106,8 +107,28 @@ export default function Profile() {
     e.preventDefault();
     updateProfile.mutate({
       full_name: fullName,
-      avatar_url: avatarUrl || undefined,
     });
+  };
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      toast({
+        title: "Invalid file",
+        description: validationError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateProfileAvatar.mutate(file);
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
   };
 
   const validatePasswordForm = () => {
@@ -173,6 +194,15 @@ export default function Profile() {
       .slice(0, 2);
   };
 
+  const formatDateOfBirth = (dateString: string) => {
+    if (!dateString) return "Not provided";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   return (
     <div className="container max-w-4xl mx-auto p-6">
       <div className="mb-6">
@@ -207,20 +237,33 @@ export default function Profile() {
             <CardContent>
               <form onSubmit={handleProfileSubmit} className="space-y-6">
                 <div className="flex items-center gap-6">
-                  <Avatar className="h-20 w-20">
-                    <AvatarImage src={avatarUrl} />
+                  <Avatar className="h-20 w-20 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleAvatarClick}>
+                    <AvatarImage src={profile?.avatar_url || ""} />
                     <AvatarFallback className="text-lg">
                       {profile?.full_name ? getInitials(profile.full_name) : "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <Button type="button" variant="outline" size="sm">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleAvatarClick}
+                      disabled={uploading}
+                    >
                       <Upload className="h-4 w-4 mr-2" />
-                      Change Avatar
+                      {uploading ? "Uploading..." : "Change Avatar"}
                     </Button>
                     <p className="text-sm text-muted-foreground mt-2">
-                      JPG, GIF or PNG. Max size 2MB
+                      JPG, PNG, GIF or WebP. Max size 2MB
                     </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
                   </div>
                 </div>
 
@@ -249,13 +292,16 @@ export default function Profile() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="avatarUrl">Avatar URL (Optional)</Label>
+                    <Label htmlFor="dateOfBirth">Date of Birth</Label>
                     <Input
-                      id="avatarUrl"
-                      value={avatarUrl}
-                      onChange={(e) => setAvatarUrl(e.target.value)}
-                      placeholder="https://example.com/avatar.jpg"
+                      id="dateOfBirth"
+                      value={formatDateOfBirth(profile?.date_of_birth || "")}
+                      disabled
+                      className="bg-muted"
                     />
+                    <p className="text-sm text-muted-foreground">
+                      Date of birth cannot be changed after registration
+                    </p>
                   </div>
                 </div>
 

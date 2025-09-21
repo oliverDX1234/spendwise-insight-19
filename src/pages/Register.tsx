@@ -86,7 +86,7 @@ export default function Register() {
 
     setIsLoading(true);
 
-    await signUp(formData.email, formData.password, formData.fullName, formData.dateOfBirth);
+    await signUp(formData.email, formData.password, formData.fullName, formData.dateOfBirth, avatarFile || undefined);
     setIsLoading(false);
   };
 
