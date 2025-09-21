@@ -20,12 +20,20 @@ export default function Index() {
   const { budgets, loading: budgetsLoading } = useBudgets();
   const { needsOnboarding, isLoading: onboardingLoading } = useOnboarding();
   const [showAddExpense, setShowAddExpense] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const { toast } = useToast();
 
-  // Show onboarding if needed
-  if (!onboardingLoading && needsOnboarding && !showOnboarding) {
-    setShowOnboarding(true);
+  // If user needs onboarding, show onboarding dialog and block everything else
+  if (!authLoading && !onboardingLoading && needsOnboarding) {
+    return (
+      <div className="min-h-screen bg-background">
+        <OnboardingDialog 
+          isOpen={true}
+          onComplete={() => {
+            window.location.reload(); // Refresh to update user state
+          }}
+        />
+      </div>
+    );
   }
 
   // Redirect to login if not authenticated
@@ -223,14 +231,6 @@ export default function Index() {
         onAddExpense={handleAddExpense}
       />
 
-      {/* Onboarding Dialog */}
-      <OnboardingDialog 
-        isOpen={showOnboarding}
-        onComplete={() => {
-          setShowOnboarding(false);
-          window.location.reload(); // Refresh to update user subscription state
-        }}
-      />
     </div>
   );
 }

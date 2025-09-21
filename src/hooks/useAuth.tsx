@@ -42,23 +42,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, dateOfBirth: string, avatarFile?: File) => {
-    // Check if email already exists
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('email')
-      .eq('email', email)
-      .single();
-
-    if (existingUser) {
-      const error = { message: "An account with this email already exists" };
-      toast({
-        title: "Sign up failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      return { error };
-    }
-
     const redirectUrl = `${window.location.origin}/`;
     
     const { error, data } = await supabase.auth.signUp({
@@ -79,8 +62,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message,
         variant: "destructive",
       });
+    } else if (data.user && !data.session) {
+      // This means the user already exists but email confirmation is required
+      toast({
+        title: "Check your email",
+        description: "We've sent you a confirmation link to complete your registration.",
+      });
+    } else if (data.user && data.session) {
+      // New user was created and auto-confirmed
+      // If there's an avatar file, upload it
+      if (avatarFile) {
+        try {
+          const fileExt = avatarFile.name.split('.').pop();
+          const fileName = `${data.user.id}/avatar.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("avatars")
+            .upload(fileName, avatarFile, {
+              cacheControl: '3600',
+              upsert: true
+            });
+
+          if (!uploadError) {
+            // Get public URL and update user profile
+            const { data: { publicUrl } } = supabase.storage
+              .from("avatars")
+              .getPublicUrl(fileName);
+
+            // Update the user profile with avatar URL
+            await supabase
+              .from("users")
+              .update({ avatar_url: publicUrl })
+              .eq("user_id", data.user.id);
+          }
+        } catch (avatarError) {
+          console.error("Avatar upload failed:", avatarError);
+          // Don't show error to user as registration was successful
+        }
+      }
+      toast({
+        title: "Account created successfully",
+        description: "Welcome! You can now complete your profile setup.",
+      });
     } else {
-      // If there's an avatar file and sign up was successful, upload it
+      // Default case - send confirmation email
+      // If there's an avatar file, try to upload it after user confirms
       if (avatarFile && data.user) {
         try {
           const fileExt = avatarFile.name.split('.').pop();

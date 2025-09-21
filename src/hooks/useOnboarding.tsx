@@ -12,15 +12,18 @@ export function useOnboarding() {
 
       const { data, error } = await supabase
         .from("users")
-        .select("subscription_plan")
+        .select("onboarding_completed, subscription_plan")
         .eq("user_id", user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // If user doesn't exist in profiles table yet, they need onboarding
+        if (error.code === 'PGRST116') return true;  
+        throw error;
+      }
       
-      // User needs onboarding if they don't have a subscription plan set yet
-      // (subscription_plan is null or empty for new users)
-      return !data?.subscription_plan;
+      // User needs onboarding if they haven't completed it yet
+      return !data?.onboarding_completed;
     },
     enabled: !!user?.id,
   });
