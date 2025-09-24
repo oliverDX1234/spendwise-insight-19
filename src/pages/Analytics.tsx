@@ -66,9 +66,9 @@ export default function Analytics() {
             </Card>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 w-full grid-cols-1 lg:grid-cols-2">
             {/* Daily Expenses Line Chart */}
-            <Card>
+            <Card className="w-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
@@ -86,7 +86,7 @@ export default function Analytics() {
                       color: "hsl(var(--primary))",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <LineChart data={expensesData?.dailyExpenses || []}>
@@ -94,10 +94,10 @@ export default function Analytics() {
                       <XAxis dataKey="date" />
                       <YAxis />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="amount" 
-                        stroke="hsl(var(--primary))" 
+                      <Line
+                        type="monotone"
+                        dataKey="amount"
+                        stroke="hsl(var(--primary))"
                         strokeWidth={2}
                         dot={{ fill: "hsl(var(--primary))" }}
                       />
@@ -130,7 +130,7 @@ export default function Analytics() {
                       color: "#06B6D4",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <PieChart>
@@ -174,7 +174,7 @@ export default function Analytics() {
                       color: "hsl(var(--primary))",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <BarChart data={expensesData?.expensesByCategory || []}>
@@ -245,7 +245,7 @@ export default function Analytics() {
                       color: "hsl(var(--primary))",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <BarChart data={categoriesData?.mostUsedCategories || []}>
@@ -274,7 +274,7 @@ export default function Analytics() {
                       color: "hsl(var(--primary))",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <PieChart>
@@ -317,7 +317,7 @@ export default function Analytics() {
                       color: "#06B6D4",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <BarChart data={categoriesData?.monthlyVsAllTime?.slice(0, 8) || []}>
@@ -364,7 +364,7 @@ export default function Analytics() {
                       color: "#8B5CF6",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <BarChart data={productsData?.mostPurchasedProducts || []}>
@@ -393,7 +393,7 @@ export default function Analytics() {
                       color: "#06B6D4",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <PieChart>
@@ -432,7 +432,7 @@ export default function Analytics() {
                       color: "#10B981",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <BarChart data={productsData?.usageFrequency || []}>
@@ -465,7 +465,7 @@ export default function Analytics() {
                       color: "#06B6D4",
                     },
                   }}
-                  className="h-[300px]"
+                  className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
                     <BarChart data={productsData?.monthlyVsAllTime || []}>
