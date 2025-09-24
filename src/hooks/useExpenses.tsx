@@ -167,12 +167,14 @@ export function useExpenses() {
 
       // Check for spending limits after creating expense
       try {
-        await supabase.functions.invoke('check-limits', {
+        console.log('Checking limits for user:', user.id, 'category:', expenseData.category_id);
+        const response = await supabase.functions.invoke('check-limits', {
           body: {
             user_id: user.id,
             category_id: expenseData.category_id
           }
         });
+        console.log('Limit check response:', response);
       } catch (limitError) {
         // Don't fail expense creation if limit check fails
         console.error('Error checking limits:', limitError);

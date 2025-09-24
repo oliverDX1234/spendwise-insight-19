@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,7 +13,7 @@ import { format } from "date-fns";
 
 export default function Limits() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const { limits, loading, refetch } = useLimits();
+  const { limits, loading, refetch, deleteLimit } = useLimits();
   const { categories } = useCategories();
   const { expenses } = useExpenses();
 
@@ -42,6 +42,16 @@ export default function Limits() {
     if (percentage >= 90) return "destructive";
     if (percentage >= 75) return "warning";
     return "default";
+  };
+
+  const handleDeleteLimit = async (limitId: string) => {
+    if (window.confirm('Are you sure you want to delete this spending limit?')) {
+      try {
+        await deleteLimit(limitId);
+      } catch (error) {
+        console.error('Error deleting limit:', error);
+      }
+    }
   };
 
   if (loading) {
@@ -89,6 +99,7 @@ export default function Limits() {
                   <TableHead>Progress</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Active Until</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -119,6 +130,16 @@ export default function Limits() {
                       </TableCell>
                       <TableCell>
                         {format(new Date(limit.end_date), "MMM dd, yyyy")}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLimit(limit.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );

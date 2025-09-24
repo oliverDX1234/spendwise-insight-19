@@ -21,7 +21,14 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { user_id, category_id } = await req.json();
+    console.log('=== CHECK-LIMITS FUNCTION CALLED ===');
+    console.log('Request method:', req.method);
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+    
+    const requestBody = await req.json();
+    console.log('Request body:', requestBody);
+    
+    const { user_id, category_id } = requestBody;
     
     if (!user_id || !category_id) {
       return new Response(JSON.stringify({ error: 'user_id and category_id are required' }), {
