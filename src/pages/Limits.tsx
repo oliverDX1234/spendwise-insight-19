@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { AddLimitDialog } from "@/components/AddLimitDialog";
+import { DeleteLimitDialog } from "@/components/DeleteLimitDialog";
 import { useLimits } from "@/hooks/useLimits";
 import { useCategories } from "@/hooks/useCategories";
 import { useExpenses } from "@/hooks/useExpenses";
@@ -13,6 +14,8 @@ import { format } from "date-fns";
 
 export default function Limits() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [limitToDelete, setLimitToDelete] = useState<{ id: string; name: string } | null>(null);
   const { limits, loading, refetch, deleteLimit } = useLimits();
   const { categories } = useCategories();
   const { expenses } = useExpenses();
@@ -44,10 +47,16 @@ export default function Limits() {
     return "default";
   };
 
-  const handleDeleteLimit = async (limitId: string) => {
-    if (window.confirm('Are you sure you want to delete this spending limit?')) {
+  const handleDeleteLimit = async (limitId: string, limitName: string) => {
+    setLimitToDelete({ id: limitId, name: limitName });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (limitToDelete) {
       try {
-        await deleteLimit(limitId);
+        await deleteLimit(limitToDelete.id);
+        setLimitToDelete(null);
       } catch (error) {
         console.error('Error deleting limit:', error);
       }
@@ -135,7 +144,7 @@ export default function Limits() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteLimit(limit.id)}
+                          onClick={() => handleDeleteLimit(limit.id, limit.name)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -158,6 +167,13 @@ export default function Limits() {
         open={isAddDialogOpen} 
         onOpenChange={setIsAddDialogOpen}
         onLimitCreated={refetch}
+      />
+
+      <DeleteLimitDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        limitName={limitToDelete?.name || ""}
       />
     </div>
   );
