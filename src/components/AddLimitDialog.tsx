@@ -45,9 +45,10 @@ type LimitFormValues = z.infer<typeof limitSchema>;
 interface AddLimitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onLimitCreated?: () => void;
 }
 
-export function AddLimitDialog({ open, onOpenChange }: AddLimitDialogProps) {
+export function AddLimitDialog({ open, onOpenChange, onLimitCreated }: AddLimitDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { createLimit } = useLimits();
   const { categories } = useCategories();
@@ -73,6 +74,7 @@ export function AddLimitDialog({ open, onOpenChange }: AddLimitDialogProps) {
       });
       form.reset();
       onOpenChange(false);
+      onLimitCreated?.();
     } catch (error) {
       console.error('Error creating limit:', error);
     } finally {
@@ -80,7 +82,7 @@ export function AddLimitDialog({ open, onOpenChange }: AddLimitDialogProps) {
     }
   };
 
-  const userCategories = categories?.filter(category => !category.is_predefined) || [];
+  const allCategories = categories || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,7 +125,7 @@ export function AddLimitDialog({ open, onOpenChange }: AddLimitDialogProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {userCategories.map((category) => (
+                      {allCategories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>

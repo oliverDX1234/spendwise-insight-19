@@ -13,7 +13,7 @@ import { format } from "date-fns";
 
 export default function Limits() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const { limits, loading } = useLimits();
+  const { limits, loading, refetch } = useLimits();
   const { categories } = useCategories();
   const { expenses } = useExpenses();
 
@@ -38,10 +38,10 @@ export default function Limits() {
     return category?.name || "Unknown Category";
   };
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage >= 90) return "bg-destructive";
-    if (percentage >= 75) return "bg-yellow-500";
-    return "bg-primary";
+  const getProgressVariant = (percentage: number): "default" | "warning" | "destructive" => {
+    if (percentage >= 90) return "destructive";
+    if (percentage >= 75) return "warning";
+    return "default";
   };
 
   if (loading) {
@@ -108,6 +108,7 @@ export default function Limits() {
                         <div className="flex items-center space-x-2">
                           <Progress 
                             value={progress} 
+                            variant={getProgressVariant(progress)}
                             className="flex-1"
                           />
                           <span className="text-sm font-medium">{progress}%</span>
@@ -135,6 +136,7 @@ export default function Limits() {
       <AddLimitDialog 
         open={isAddDialogOpen} 
         onOpenChange={setIsAddDialogOpen}
+        onLimitCreated={refetch}
       />
     </div>
   );
