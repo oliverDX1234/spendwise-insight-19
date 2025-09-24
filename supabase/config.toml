@@ -1,1 +1,4 @@
 project_id = "alpdddwpjrwapqedcwdw"
+
+[functions.check-limits]
+verify_jwt = true

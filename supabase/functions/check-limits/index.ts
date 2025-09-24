@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,8 +9,10 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+const resend = new Resend(resendApiKey);
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -18,12 +21,23 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('Checking spending limits...');
+    const { user_id, category_id } = await req.json();
+    
+    if (!user_id || !category_id) {
+      return new Response(JSON.stringify({ error: 'user_id and category_id are required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
 
-    // Get all active limits
+    console.log(`Checking spending limits for user ${user_id} in category ${category_id}...`);
+
+    // Get active limits for this user and category
     const { data: limits, error: limitsError } = await supabase
       .from('limits')
       .select('*')
+      .eq('user_id', user_id)
+      .eq('category_id', category_id)
       .lte('start_date', new Date().toISOString().split('T')[0])
       .gte('end_date', new Date().toISOString().split('T')[0]);
 
@@ -33,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!limits || limits.length === 0) {
-      console.log('No active limits found');
+      console.log('No active limits found for this category');
       return new Response(JSON.stringify({ message: 'No active limits found' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
@@ -89,9 +103,32 @@ const handler = async (req: Request): Promise<Response> => {
 
           const categoryName = category?.name || 'Unknown Category';
 
-          // TODO: Send email notification here
-          // You can implement email sending using Resend or another service
-          console.log(`Would send email to ${user.email} about limit reached for ${categoryName}`);
+          // Send email notification
+          try {
+            const emailResponse = await resend.emails.send({
+              from: 'ExpenseTracker <notifications@resend.dev>',
+              to: [user.email],
+              subject: '🚨 Spending Limit Reached!',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #ef4444;">Spending Limit Reached</h2>
+                  <p>Hi ${user.full_name || 'there'},</p>
+                  <p>Your spending limit "<strong>${limit.name}</strong>" for the <strong>${categoryName}</strong> category has been reached.</p>
+                  <div style="background-color: #fee2e2; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                    <p style="margin: 0;"><strong>Limit:</strong> $${limitAmount.toFixed(2)}</p>
+                    <p style="margin: 0;"><strong>Spent:</strong> $${totalSpent.toFixed(2)} (${percentage.toFixed(1)}%)</p>
+                    <p style="margin: 0;"><strong>Period:</strong> ${limit.period_type.charAt(0).toUpperCase() + limit.period_type.slice(1)}</p>
+                  </div>
+                  <p>Consider reviewing your spending in this category to stay within your budget.</p>
+                  <p>Best regards,<br>Your Expense Tracker</p>
+                </div>
+              `,
+            });
+
+            console.log(`Email sent successfully to ${user.email}:`, emailResponse);
+          } catch (emailError) {
+            console.error('Error sending email:', emailError);
+          }
         }
       } catch (error) {
         console.error('Error processing limit:', limit.id, error);
