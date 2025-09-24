@@ -7,6 +7,7 @@ import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Expenses from "./pages/Expenses";
 import Categories from "./pages/Categories";
+import Limits from "./pages/Limits";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -58,6 +59,11 @@ const App = () => (
           <Route path="/categories" element={
             <ProtectedRoute>
               <Categories />
+            </ProtectedRoute>
+          } />
+          <Route path="/limits" element={
+            <ProtectedRoute>
+              <Limits />
             </ProtectedRoute>
           } />
           <Route path="/profile" element={

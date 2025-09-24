@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Home, Receipt, PieChart, Settings, CreditCard, Target, User, LogOut } from "lucide-react"
+import { Home, Receipt, PieChart, Settings, CreditCard, Target, User, LogOut, AlertCircle } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -22,6 +22,7 @@ const items = [
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Categories", url: "/categories", icon: PieChart },
   { title: "Budgets", url: "/budgets", icon: Target },
+  { title: "Limits", url: "/limits", icon: AlertCircle },
   { title: "Settings", url: "/settings", icon: Settings },
 ]
 
