@@ -176,15 +176,19 @@ export function useExpenses() {
         });
         console.log('Limit check response:', response);
         
-        // Show toast notifications for exceeded limits
+        // Show toast notifications for exceeded limits with delay
         if (response.data?.limitExceeded && response.data?.notifications) {
-          for (const notification of response.data.notifications) {
-            toast({
-              title: "🚨 Spending Limit Exceeded!",
-              description: `You've exceeded your "${notification.limitName}" limit for ${notification.categoryName}. Spent $${notification.totalSpent} out of $${notification.limitAmount} (${notification.percentage}%)`,
-              variant: "destructive",
-            });
-          }
+          // Add a small delay to let the success toast appear first
+          setTimeout(() => {
+            for (const notification of response.data.notifications) {
+              toast({
+                title: "🚨 Spending Limit Exceeded!",
+                description: `You've exceeded your "${notification.limitName}" limit for ${notification.categoryName}. Spent $${notification.totalSpent} out of $${notification.limitAmount} (${notification.percentage}%)`,
+                variant: "destructive",
+                duration: 8000, // Show longer for important alerts
+              });
+            }
+          }, 1000);
         }
       } catch (limitError) {
         // Don't fail expense creation if limit check fails

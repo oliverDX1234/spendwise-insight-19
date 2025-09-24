@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,8 +9,10 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+const resend = new Resend(resendApiKey);
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -63,6 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Found ${limits.length} active limits`);
     let limitExceeded = false;
     const notifications = [];
+    let emailsSent = 0;
 
     for (const limit of limits) {
       try {
@@ -91,6 +95,18 @@ const handler = async (req: Request): Promise<Response> => {
           console.log(`🚨 LIMIT EXCEEDED for ${limit.name}!`);
           limitExceeded = true;
 
+          // Get user details for email
+          const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('email, full_name')
+            .eq('user_id', limit.user_id)
+            .single();
+
+          if (userError || !user) {
+            console.error('Error fetching user for limit:', limit.id, userError);
+            continue;
+          }
+
           // Get category name
           const { data: category, error: categoryError } = await supabase
             .from('categories')
@@ -113,6 +129,70 @@ const handler = async (req: Request): Promise<Response> => {
           notifications.push(notification);
           
           console.log(`Notification created:`, notification);
+
+          // Send email notification
+          try {
+            console.log(`Sending email notification to ${user.email}...`);
+            
+            const emailResponse = await resend.emails.send({
+              from: 'Expense Tracker <onboarding@resend.dev>',
+              to: [user.email],
+              subject: '🚨 Spending Limit Exceeded!',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+                  <div style="border-left: 4px solid #ef4444; padding-left: 20px; margin-bottom: 20px;">
+                    <h1 style="color: #ef4444; margin-bottom: 10px; font-size: 24px;">🚨 Spending Limit Exceeded!</h1>
+                  </div>
+                  
+                  <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                    Hi ${user.full_name || 'there'},
+                  </p>
+                  
+                  <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                    Your spending limit "<strong>${limit.name}</strong>" for the <strong>${categoryName}</strong> category has been exceeded.
+                  </p>
+                  
+                  <div style="background-color: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #dc2626; font-size: 18px;">Limit Details</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding: 8px 0; color: #374151; font-weight: 600;">Limit Amount:</td>
+                        <td style="padding: 8px 0; color: #374151; text-align: right;">$${limitAmount.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #374151; font-weight: 600;">Amount Spent:</td>
+                        <td style="padding: 8px 0; color: #dc2626; text-align: right; font-weight: 600;">$${totalSpent.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #374151; font-weight: 600;">Exceeded by:</td>
+                        <td style="padding: 8px 0; color: #dc2626; text-align: right; font-weight: 600;">${percentage.toFixed(1)}%</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #374151; font-weight: 600;">Period:</td>
+                        <td style="padding: 8px 0; color: #374151; text-align: right;">${limit.period_type.charAt(0).toUpperCase() + limit.period_type.slice(1)}</td>
+                      </tr>
+                    </table>
+                  </div>
+                  
+                  <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                    Consider reviewing your spending in this category to stay within your budget for the remainder of this ${limit.period_type} period.
+                  </p>
+                  
+                  <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px;">
+                    <p style="font-size: 14px; color: #6b7280; margin: 0;">
+                      Best regards,<br>
+                      Your Expense Tracker Team
+                    </p>
+                  </div>
+                </div>
+              `,
+            });
+
+            console.log(`✅ Email sent successfully to ${user.email}:`, emailResponse);
+            emailsSent++;
+          } catch (emailError) {
+            console.error(`❌ Failed to send email to ${user.email}:`, emailError);
+          }
         }
       } catch (error) {
         console.error('Error processing limit:', limit.id, error);
@@ -123,7 +203,8 @@ const handler = async (req: Request): Promise<Response> => {
       message: 'Limit check completed',
       limitsProcessed: limits.length,
       limitExceeded,
-      notifications
+      notifications,
+      emailsSent
     };
 
     console.log('Final response:', response);
