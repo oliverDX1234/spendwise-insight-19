@@ -89,11 +89,9 @@ const handler = async (req: Request): Promise<Response> => {
 
           const categoryName = category?.name || 'Unknown Category';
 
-          // Send notification (you would implement actual email sending here)
+          // TODO: Send email notification here
+          // You can implement email sending using Resend or another service
           console.log(`Would send email to ${user.email} about limit reached for ${categoryName}`);
-
-          // For now, we'll just log it
-          // In a real implementation, you'd integrate with an email service like Resend
         }
       } catch (error) {
         console.error('Error processing limit:', limit.id, error);
