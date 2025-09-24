@@ -1,7 +1,8 @@
 import { useState } from "react"
-import { Home, Receipt, PieChart, Settings, CreditCard, Target, User, LogOut, AlertCircle } from "lucide-react"
+import { Home, Receipt, PieChart, Settings, CreditCard, Target, User, LogOut, AlertCircle, BarChart3 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
+import { useSubscription } from "@/hooks/useSubscription"
 
 import {
   Sidebar,
@@ -16,11 +17,13 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const items = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Categories", url: "/categories", icon: PieChart },
+  { title: "Analytics", url: "/analytics", icon: BarChart3, requiresPremium: true },
   { title: "Budgets", url: "/budgets", icon: Target },
   { title: "Limits", url: "/limits", icon: AlertCircle },
   { title: "Settings", url: "/settings", icon: Settings },
@@ -31,6 +34,7 @@ export function AppSidebar() {
   const location = useLocation()
   const currentPath = location.pathname
   const { signOut } = useAuth()
+  const { isTrial } = useSubscription()
 
   const isActive = (path: string) => currentPath === path
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
@@ -41,28 +45,47 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar
-      collapsible="icon"
-    >
-      <SidebarContent className="flex flex-col h-full">
-        <SidebarGroup className="flex-1">
-          <SidebarGroupLabel>SpendWise</SidebarGroupLabel>
+    <TooltipProvider>
+      <Sidebar
+        collapsible="icon"
+      >
+        <SidebarContent className="flex flex-col h-full">
+          <SidebarGroup className="flex-1">
+            <SidebarGroupLabel>SpendWise</SidebarGroupLabel>
 
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
-                      <item.icon className="mr-2 h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {items.map((item) => {
+                  const isDisabled = item.requiresPremium && isTrial;
+                  
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      {isDisabled ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <SidebarMenuButton className="opacity-50 cursor-not-allowed">
+                              <item.icon className="mr-2 h-4 w-4" />
+                              <span>{item.title}</span>
+                            </SidebarMenuButton>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Upgrade your plan in order to be able to use this feature</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <SidebarMenuButton asChild>
+                          <NavLink to={item.url} end className={getNavCls}>
+                            <item.icon className="mr-2 h-4 w-4" />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      )}
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
         {/* Bottom section with profile and logout */}
         <SidebarGroup>
@@ -93,5 +116,6 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
+    </TooltipProvider>
   )
 }

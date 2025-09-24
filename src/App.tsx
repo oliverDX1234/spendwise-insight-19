@@ -7,6 +7,7 @@ import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Expenses from "./pages/Expenses";
 import Categories from "./pages/Categories";
+import Analytics from "./pages/Analytics";
 import Limits from "./pages/Limits";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
@@ -59,6 +60,11 @@ const App = () => (
           <Route path="/categories" element={
             <ProtectedRoute>
               <Categories />
+            </ProtectedRoute>
+          } />
+          <Route path="/analytics" element={
+            <ProtectedRoute>
+              <Analytics />
             </ProtectedRoute>
           } />
           <Route path="/limits" element={
