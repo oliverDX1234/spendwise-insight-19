@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -44,6 +45,8 @@ export function EditExpenseDialog({
   const [date, setDate] = useState<Date>();
   const [description, setDescription] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringInterval, setRecurringInterval] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -57,6 +60,8 @@ export function EditExpenseDialog({
         quantity: p.quantity,
         price_per_unit: p.price_per_unit
       })));
+      setIsRecurring(expense.is_recurring || false);
+      setRecurringInterval(expense.recurring_interval || '');
     }
   }, [expense]);
 
@@ -86,6 +91,8 @@ export function EditExpenseDialog({
     setDate(undefined);
     setDescription('');
     setProducts([]);
+    setIsRecurring(false);
+    setRecurringInterval('');
   };
 
   const handleSubmit = async () => {
@@ -108,6 +115,8 @@ export function EditExpenseDialog({
         category_id: categoryId,
         expense_date: format(date, 'yyyy-MM-dd'),
         description: description || null,
+        is_recurring: isRecurring,
+        recurring_interval: isRecurring ? recurringInterval : null,
         products: products.filter(p => p.name.trim() !== '')
       });
 
@@ -198,6 +207,36 @@ export function EditExpenseDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description"
             />
+          </div>
+
+          {/* Recurring Options */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Switch 
+                id="recurring" 
+                checked={isRecurring} 
+                onCheckedChange={setIsRecurring}
+                disabled={isSubmitting}
+              />
+              <Label htmlFor="recurring">Make this a recurring expense</Label>
+            </div>
+            
+            {isRecurring && (
+              <div className="space-y-2">
+                <Label htmlFor="interval">Recurring Interval</Label>
+                <Select value={recurringInterval} onValueChange={setRecurringInterval} disabled={isSubmitting}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select interval" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <Card>

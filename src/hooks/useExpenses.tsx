@@ -107,7 +107,8 @@ export function useExpenses() {
           description: expenseData.description,
           expense_date: expenseData.expense_date,
           is_recurring: expenseData.is_recurring || false,
-          recurring_interval: expenseData.recurring_interval
+          recurring_interval: expenseData.recurring_interval,
+          next_occurrence: expenseData.is_recurring ? calculateNextOccurrence(expenseData.expense_date, expenseData.recurring_interval) : null
         })
         .select()
         .single();
@@ -189,7 +190,10 @@ export function useExpenses() {
           amount: expenseData.amount,
           category_id: expenseData.category_id,
           expense_date: expenseData.expense_date,
-          description: expenseData.description
+          description: expenseData.description,
+          is_recurring: expenseData.is_recurring || false,
+          recurring_interval: expenseData.recurring_interval,
+          next_occurrence: expenseData.is_recurring ? calculateNextOccurrence(expenseData.expense_date, expenseData.recurring_interval) : null
         })
         .eq('id', expenseId);
 
@@ -330,4 +334,29 @@ export function useExpenses() {
     deleteExpense,
     getExpensesByPeriod
   };
+}
+
+// Helper function to calculate next occurrence
+function calculateNextOccurrence(currentDate: string, interval: string | null | undefined): string {
+  const date = new Date(currentDate);
+  
+  switch (interval) {
+    case 'daily':
+      date.setDate(date.getDate() + 1);
+      break;
+    case 'weekly':
+      date.setDate(date.getDate() + 7);
+      break;
+    case 'monthly':
+      date.setMonth(date.getMonth() + 1);
+      break;
+    case 'yearly':
+      date.setFullYear(date.getFullYear() + 1);
+      break;
+    default:
+      // Default to monthly if interval is not recognized
+      date.setMonth(date.getMonth() + 1);
+  }
+  
+  return date.toISOString().split('T')[0];
 }

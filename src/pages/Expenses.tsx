@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { format } from "date-fns"
-import { Search, Filter, ArrowUpDown, ChevronDown } from "lucide-react"
+import { Search, Filter, ArrowUpDown, ChevronDown, Plus } from "lucide-react"
 import { useExpenses, Expense } from "@/hooks/useExpenses"
 import { useCategories } from "@/hooks/useCategories"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { EditExpenseDialog } from "@/components/EditExpenseDialog"
+import { AddExpenseDialog } from "@/components/AddExpenseDialog"
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog"
 
 type SortField = 'expense_date' | 'amount' | 'description' | 'category'
@@ -36,7 +37,7 @@ type SortDirection = 'asc' | 'desc'
 type TimePeriod = 'all' | 'today' | 'week' | 'month' | 'year'
 
 export default function Expenses() {
-  const { expenses, loading, updateExpense, deleteExpense } = useExpenses()
+  const { expenses, loading, createExpense, updateExpense, deleteExpense } = useExpenses()
   const { categories } = useCategories()
   
   const [searchTerm, setSearchTerm] = useState("")
@@ -48,6 +49,7 @@ export default function Expenses() {
   
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
@@ -177,6 +179,14 @@ export default function Expenses() {
     }
   }
 
+  const handleAddExpense = async (expenseData: any) => {
+    try {
+      await createExpense(expenseData)
+    } catch (error) {
+      // Error is handled by the hook
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -189,9 +199,15 @@ export default function Expenses() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Expenses</h1>
-        <Badge variant="secondary">
-          {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">
+            {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}
+          </Badge>
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Expense
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -302,6 +318,7 @@ export default function Expenses() {
                   </Button>
                 </TableHead>
                 <TableHead>Products</TableHead>
+                <TableHead>Recurring</TableHead>
                 <TableHead>
                   <Button
                     variant="ghost"
@@ -322,11 +339,6 @@ export default function Expenses() {
                   </TableCell>
                   <TableCell>
                     {expense.description || '-'}
-                    {expense.is_recurring && (
-                      <Badge variant="outline" className="ml-2">
-                        Recurring
-                      </Badge>
-                    )}
                   </TableCell>
                   <TableCell>
                     <Badge 
@@ -348,6 +360,15 @@ export default function Expenses() {
                           </div>
                         ))}
                       </div>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {expense.is_recurring ? (
+                      <Badge variant="outline">
+                        {expense.recurring_interval}
+                      </Badge>
                     ) : (
                       '-'
                     )}
@@ -387,6 +408,12 @@ export default function Expenses() {
           )}
         </CardContent>
       </Card>
+
+      <AddExpenseDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onAddExpense={handleAddExpense}
+      />
 
       <EditExpenseDialog
         expense={editingExpense}
