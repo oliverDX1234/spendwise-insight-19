@@ -175,6 +175,17 @@ export function useExpenses() {
           }
         });
         console.log('Limit check response:', response);
+        
+        // Show toast notifications for exceeded limits
+        if (response.data?.limitExceeded && response.data?.notifications) {
+          for (const notification of response.data.notifications) {
+            toast({
+              title: "🚨 Spending Limit Exceeded!",
+              description: `You've exceeded your "${notification.limitName}" limit for ${notification.categoryName}. Spent $${notification.totalSpent} out of $${notification.limitAmount} (${notification.percentage}%)`,
+              variant: "destructive",
+            });
+          }
+        }
       } catch (limitError) {
         // Don't fail expense creation if limit check fails
         console.error('Error checking limits:', limitError);

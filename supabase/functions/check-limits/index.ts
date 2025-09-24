@@ -19,8 +19,6 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     console.log('=== CHECK-LIMITS FUNCTION CALLED ===');
-    console.log('Request method:', req.method);
-    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
     
     const requestBody = await req.json();
     console.log('Request body:', requestBody);
@@ -52,13 +50,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!limits || limits.length === 0) {
       console.log('No active limits found for this category');
-      return new Response(JSON.stringify({ message: 'No active limits found' }), {
+      return new Response(JSON.stringify({ 
+        message: 'No active limits found',
+        limitExceeded: false,
+        notifications: []
+      }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
     console.log(`Found ${limits.length} active limits`);
+    let limitExceeded = false;
+    const notifications = [];
 
     for (const limit of limits) {
       try {
@@ -84,19 +88,8 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Check if limit is reached (100% or more)
         if (percentage >= 100) {
-          console.log(`Limit reached for ${limit.name}! Creating in-app notification...`);
-
-          // Get user details
-          const { data: user, error: userError } = await supabase
-            .from('users')
-            .select('email, full_name')
-            .eq('user_id', limit.user_id)
-            .single();
-
-          if (userError || !user) {
-            console.error('Error fetching user for limit:', limit.id, userError);
-            continue;
-          }
+          console.log(`🚨 LIMIT EXCEEDED for ${limit.name}!`);
+          limitExceeded = true;
 
           // Get category name
           const { data: category, error: categoryError } = await supabase
@@ -106,24 +99,36 @@ const handler = async (req: Request): Promise<Response> => {
             .single();
 
           const categoryName = category?.name || 'Unknown Category';
-
-          // Log notification (could be extended to create database notifications)
-          console.log(`Limit exceeded notification: User ${user.full_name || user.email} exceeded ${categoryName} limit of $${limitAmount} with spending of $${totalSpent} (${percentage.toFixed(1)}%)`);
           
-          // For now, we'll just log this. In a production app, you could:
-          // 1. Create a notifications table and insert the notification
-          // 2. Use Supabase's built-in real-time features to show toast notifications
-          // 3. Send push notifications through a service worker
+          // Create notification object to return to frontend
+          const notification = {
+            limitName: limit.name,
+            categoryName,
+            limitAmount,
+            totalSpent,
+            percentage: percentage.toFixed(1),
+            periodType: limit.period_type
+          };
+          
+          notifications.push(notification);
+          
+          console.log(`Notification created:`, notification);
         }
       } catch (error) {
         console.error('Error processing limit:', limit.id, error);
       }
     }
 
-    return new Response(JSON.stringify({ 
+    const response = {
       message: 'Limit check completed',
-      limitsProcessed: limits.length 
-    }), {
+      limitsProcessed: limits.length,
+      limitExceeded,
+      notifications
+    };
+
+    console.log('Final response:', response);
+
+    return new Response(JSON.stringify(response), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
