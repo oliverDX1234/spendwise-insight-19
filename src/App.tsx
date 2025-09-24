@@ -20,7 +20,9 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  
+
+  console.log("ProtectedRoute - user:", user?.id, "loading:", loading);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -28,11 +30,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   if (!user) {
+    console.log("No user found, redirecting to login");
     return <Navigate to="/login" replace />;
   }
-  
+
   return <Layout>{children}</Layout>;
 }
 
@@ -47,36 +50,54 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Index />
-            </ProtectedRoute>
-          } />
-          <Route path="/expenses" element={
-            <ProtectedRoute>
-              <Expenses />
-            </ProtectedRoute>
-          } />
-          <Route path="/categories" element={
-            <ProtectedRoute>
-              <Categories />
-            </ProtectedRoute>
-          } />
-          <Route path="/analytics" element={
-            <ProtectedRoute>
-              <Analytics />
-            </ProtectedRoute>
-          } />
-          <Route path="/limits" element={
-            <ProtectedRoute>
-              <Limits />
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Index />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/expenses"
+            element={
+              <ProtectedRoute>
+                <Expenses />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/categories"
+            element={
+              <ProtectedRoute>
+                <Categories />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/limits"
+            element={
+              <ProtectedRoute>
+                <Limits />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

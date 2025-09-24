@@ -1,12 +1,29 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, CreditCard, TrendingUp, Users, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCards } from "@/hooks/useCards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,11 +34,16 @@ interface OnboardingDialogProps {
   onComplete: () => void;
 }
 
-export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) {
-  const [step, setStep] = useState<'plan' | 'payment'>('plan');
-  const [selectedPlan, setSelectedPlan] = useState<'trial' | 'premium' | null>(null);
+export function OnboardingDialog({
+  isOpen,
+  onComplete,
+}: OnboardingDialogProps) {
+  const [step, setStep] = useState<"plan" | "payment">("plan");
+  const [selectedPlan, setSelectedPlan] = useState<"trial" | "premium" | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { createCard } = useCards();
 
   // Card form state
@@ -31,29 +53,31 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
   const [expiryYear, setExpiryYear] = useState("");
   const [cvc, setCvc] = useState("");
 
-  const handlePlanSelect = async (plan: 'trial' | 'premium') => {
+  const handlePlanSelect = async (plan: "trial" | "premium") => {
     setSelectedPlan(plan);
-    
-    if (plan === 'trial') {
+
+    if (plan === "trial") {
       await handleTrialSelection();
     } else {
-      setStep('payment');
+      setStep("payment");
     }
   };
 
   const handleTrialSelection = async () => {
     if (!user) return;
-    
+
     setIsLoading(true);
     try {
       const { error } = await supabase
-        .from('users')
-        .update({ 
-          subscription_plan: 'trial',
-          subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          onboarding_completed: true
+        .from("users")
+        .update({
+          subscription_plan: "trial",
+          subscription_expires_at: new Date(
+            Date.now() + 30 * 24 * 60 * 60 * 1000
+          ).toISOString(),
+          onboarding_completed: true,
         })
-        .eq('user_id', user.id);
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
@@ -61,12 +85,15 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
         title: "Welcome to your trial!",
         description: "You now have 30 days to explore the app.",
       });
-      
+
       onComplete();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -91,13 +118,15 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
 
       // Update user subscription
       const { error } = await supabase
-        .from('users')
-        .update({ 
-          subscription_plan: 'premium',
-          subscription_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-          onboarding_completed: true
+        .from("users")
+        .update({
+          subscription_plan: "premium",
+          subscription_expires_at: new Date(
+            Date.now() + 365 * 24 * 60 * 60 * 1000
+          ).toISOString(),
+          onboarding_completed: true,
         })
-        .eq('user_id', user.id);
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
@@ -105,12 +134,15 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
         title: "Welcome to Premium!",
         description: "You now have unlimited access to all features.",
       });
-      
+
       onComplete();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -133,7 +165,10 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
     const expYear = parseInt(expiryYear);
     const expMonth = parseInt(expiryMonth);
 
-    if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+    if (
+      expYear < currentYear ||
+      (expYear === currentYear && expMonth < currentMonth)
+    ) {
       toast({
         title: "Validation Error",
         description: "Card has expired.",
@@ -146,26 +181,37 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
   };
 
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 16);
-    const formatted = value.replace(/(.{4})/g, '$1 ').trim();
+    const value = e.target.value.replace(/\D/g, "").slice(0, 16);
+    const formatted = value.replace(/(.{4})/g, "$1 ").trim();
     setCardNumber(formatted);
   };
 
   const handleCvcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+    const value = e.target.value.replace(/\D/g, "").slice(0, 4);
     setCvc(value);
   };
 
+  const handleDialogClose = async () => {
+    // Log out the user if they try to close without completing onboarding
+    const { error } = await signOut();
+    // Even if there's an error (like "auth session missing"),
+    // the user will still be logged out, so we don't need to handle it
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-4xl">
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
+      <DialogContent
+        className="max-w-4xl"
+        onEscapeKeyDown={handleDialogClose}
+        onPointerDownOutside={handleDialogClose}
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl text-center">
-            {step === 'plan' ? 'Choose Your Plan' : 'Enter Payment Details'}
+            {step === "plan" ? "Choose Your Plan" : "Enter Payment Details"}
           </DialogTitle>
         </DialogHeader>
-        
-        {step === 'plan' && (
+
+        {step === "plan" && (
           <div className="grid md:grid-cols-2 gap-6 mt-6">
             <Card className="relative cursor-pointer hover:ring-2 hover:ring-primary transition-all">
               <CardHeader>
@@ -197,10 +243,10 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
                     <span className="text-sm">No analytics access</span>
                   </div>
                 </div>
-                <Button 
-                  className="w-full" 
+                <Button
+                  className="w-full"
                   variant="outline"
-                  onClick={() => handlePlanSelect('trial')}
+                  onClick={() => handlePlanSelect("trial")}
                   disabled={isLoading}
                 >
                   Start Free Trial
@@ -238,9 +284,9 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
                     <span className="text-sm">Priority support</span>
                   </div>
                 </div>
-                <Button 
-                  className="w-full" 
-                  onClick={() => handlePlanSelect('premium')}
+                <Button
+                  className="w-full"
+                  onClick={() => handlePlanSelect("premium")}
                   disabled={isLoading}
                 >
                   Choose Premium
@@ -250,13 +296,15 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
           </div>
         )}
 
-        {step === 'payment' && (
+        {step === "payment" && (
           <div className="max-w-md mx-auto space-y-6">
             <div className="text-center">
               <h3 className="text-lg font-semibold">Premium Plan Selected</h3>
-              <p className="text-muted-foreground">Enter your payment details to continue</p>
+              <p className="text-muted-foreground">
+                Enter your payment details to continue
+              </p>
             </div>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="cardNumber">Card Number</Label>
@@ -287,11 +335,16 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
                       <SelectValue placeholder="MM" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                        <SelectItem key={month} value={month.toString().padStart(2, '0')}>
-                          {month.toString().padStart(2, '0')}
-                        </SelectItem>
-                      ))}
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(
+                        (month) => (
+                          <SelectItem
+                            key={month}
+                            value={month.toString().padStart(2, "0")}
+                          >
+                            {month.toString().padStart(2, "0")}
+                          </SelectItem>
+                        )
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -303,7 +356,10 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
                       <SelectValue placeholder="YYYY" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map((year) => (
+                      {Array.from(
+                        { length: 10 },
+                        (_, i) => new Date().getFullYear() + i
+                      ).map((year) => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
                         </SelectItem>
@@ -326,16 +382,16 @@ export function OnboardingDialog({ isOpen, onComplete }: OnboardingDialogProps) 
             </div>
 
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1"
-                onClick={() => setStep('plan')}
+                onClick={() => setStep("plan")}
                 disabled={isLoading}
               >
                 Back
               </Button>
-              <Button 
-                className="flex-1" 
+              <Button
+                className="flex-1"
                 onClick={handlePremiumSelection}
                 disabled={isLoading}
               >

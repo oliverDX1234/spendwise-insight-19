@@ -1,13 +1,25 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, dateOfBirth: string, avatarFile?: File) => Promise<{ error: any }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    dateOfBirth: string,
+    avatarFile?: File
+  ) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
@@ -23,13 +35,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state change:", event, session?.user?.id);
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -41,9 +54,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, dateOfBirth: string, avatarFile?: File) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    dateOfBirth: string,
+    avatarFile?: File
+  ) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error, data } = await supabase.auth.signUp({
       email,
       password,
@@ -52,8 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           full_name: fullName,
           date_of_birth: dateOfBirth,
-        }
-      }
+        },
+      },
     });
 
     if (error) {
@@ -66,28 +85,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // This means the user already exists but email confirmation is required
       toast({
         title: "Check your email",
-        description: "We've sent you a confirmation link to complete your registration.",
+        description:
+          "We've sent you a confirmation link to complete your registration.",
       });
     } else if (data.user && data.session) {
       // New user was created and auto-confirmed
       // If there's an avatar file, upload it
       if (avatarFile) {
         try {
-          const fileExt = avatarFile.name.split('.').pop();
+          const fileExt = avatarFile.name.split(".").pop();
           const fileName = `${data.user.id}/avatar.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from("avatars")
             .upload(fileName, avatarFile, {
-              cacheControl: '3600',
-              upsert: true
+              cacheControl: "3600",
+              upsert: true,
             });
 
           if (!uploadError) {
             // Get public URL and update user profile
-            const { data: { publicUrl } } = supabase.storage
-              .from("avatars")
-              .getPublicUrl(fileName);
+            const {
+              data: { publicUrl },
+            } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
             // Update the user profile with avatar URL
             await supabase
@@ -109,21 +129,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If there's an avatar file, try to upload it after user confirms
       if (avatarFile && data.user) {
         try {
-          const fileExt = avatarFile.name.split('.').pop();
+          const fileExt = avatarFile.name.split(".").pop();
           const fileName = `${data.user.id}/avatar.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from("avatars")
             .upload(fileName, avatarFile, {
-              cacheControl: '3600',
-              upsert: true
+              cacheControl: "3600",
+              upsert: true,
             });
 
           if (!uploadError) {
             // Get public URL and update user profile
-            const { data: { publicUrl } } = supabase.storage
-              .from("avatars")
-              .getPublicUrl(fileName);
+            const {
+              data: { publicUrl },
+            } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
             // Update the user profile with avatar URL
             await supabase
@@ -139,7 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       toast({
         title: "Check your email",
-        description: "We've sent you a confirmation link to complete your registration.",
+        description:
+          "We've sent you a confirmation link to complete your registration.",
       });
     }
 
@@ -165,8 +186,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
-    
-    if (error) {
+
+    // Immediately clear local state regardless of error
+    setUser(null);
+    setSession(null);
+
+    // Don't show error toast for "auth session missing" as it's expected
+    // when user is already logged out or session expired
+    if (error && !error.message.includes("auth session missing")) {
       toast({
         title: "Sign out failed",
         description: error.message,
@@ -179,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const redirectUrl = `${window.location.origin}/reset-password`;
-    
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,
     });
@@ -222,16 +249,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      loading,
-      signUp,
-      signIn,
-      signOut,
-      resetPassword,
-      updatePassword,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        signUp,
+        signIn,
+        signOut,
+        resetPassword,
+        updatePassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -240,7 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
