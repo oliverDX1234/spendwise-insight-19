@@ -2,7 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Lock, CreditCard, Upload, Trash2 } from "lucide-react";
@@ -34,15 +40,17 @@ export default function Profile() {
   const { updateProfileAvatar, uploading } = useAvatarUpload();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Personal info state
   const [fullName, setFullName] = useState("");
-  
+
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>(
+    {}
+  );
 
   // Delete card dialog state
   const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
@@ -94,7 +102,7 @@ export default function Profile() {
         description: "Your profile has been successfully updated.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Failed to update profile",
         description: error.message,
@@ -133,26 +141,26 @@ export default function Profile() {
 
   const validatePasswordForm = () => {
     const errors: Record<string, string> = {};
-    
+
     if (!currentPassword) {
       errors.currentPassword = "Current password is required";
     }
-    
+
     if (!newPassword || newPassword.length < 6) {
       errors.newPassword = "New password must be at least 6 characters";
     }
-    
+
     if (newPassword !== confirmPassword) {
       errors.confirmPassword = "Passwords do not match";
     }
-    
+
     setPasswordErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validatePasswordForm()) return;
 
     // First verify current password by signing in with it
@@ -169,17 +177,20 @@ export default function Profile() {
 
       // Update password
       const { error } = await updatePassword(newPassword);
-      
+
       if (!error) {
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setPasswordErrors({});
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Password update failed",
-        description: error.message,
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
         variant: "destructive",
       });
     }
@@ -207,7 +218,9 @@ export default function Profile() {
     <div className="container max-w-4xl mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Profile Settings</h1>
-        <p className="text-muted-foreground">Manage your account settings and preferences</p>
+        <p className="text-muted-foreground">
+          Manage your account settings and preferences
+        </p>
       </div>
 
       <Tabs defaultValue="personal" className="space-y-6">
@@ -237,17 +250,22 @@ export default function Profile() {
             <CardContent>
               <form onSubmit={handleProfileSubmit} className="space-y-6">
                 <div className="flex items-center gap-6">
-                  <Avatar className="h-20 w-20 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleAvatarClick}>
+                  <Avatar
+                    className="h-20 w-20 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={handleAvatarClick}
+                  >
                     <AvatarImage src={profile?.avatar_url || ""} />
                     <AvatarFallback className="text-lg">
-                      {profile?.full_name ? getInitials(profile.full_name) : "U"}
+                      {profile?.full_name
+                        ? getInitials(profile.full_name)
+                        : "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={handleAvatarClick}
                       disabled={uploading}
                     >
@@ -333,7 +351,9 @@ export default function Profile() {
                     placeholder="Enter current password"
                   />
                   {passwordErrors.currentPassword && (
-                    <p className="text-sm text-destructive">{passwordErrors.currentPassword}</p>
+                    <p className="text-sm text-destructive">
+                      {passwordErrors.currentPassword}
+                    </p>
                   )}
                 </div>
 
@@ -347,7 +367,9 @@ export default function Profile() {
                     placeholder="Enter new password"
                   />
                   {passwordErrors.newPassword && (
-                    <p className="text-sm text-destructive">{passwordErrors.newPassword}</p>
+                    <p className="text-sm text-destructive">
+                      {passwordErrors.newPassword}
+                    </p>
                   )}
                 </div>
 
@@ -361,13 +383,13 @@ export default function Profile() {
                     placeholder="Confirm new password"
                   />
                   {passwordErrors.confirmPassword && (
-                    <p className="text-sm text-destructive">{passwordErrors.confirmPassword}</p>
+                    <p className="text-sm text-destructive">
+                      {passwordErrors.confirmPassword}
+                    </p>
                   )}
                 </div>
 
-                <Button type="submit">
-                  Update Password
-                </Button>
+                <Button type="submit">Update Password</Button>
               </form>
             </CardContent>
           </Card>
@@ -407,15 +429,18 @@ export default function Profile() {
                         </div>
                         <div>
                           <div className="font-medium">
-                            {card.card_type} ending in {card.card_number.slice(-4)}
+                            {card.card_type} ending in{" "}
+                            {card.card_number.slice(-4)}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {card.card_holder_name} • Expires {card.expiry_month.toString().padStart(2, '0')}/{card.expiry_year}
+                            {card.card_holder_name} • Expires{" "}
+                            {card.expiry_month.toString().padStart(2, "0")}/
+                            {card.expiry_year}
                           </div>
                         </div>
                       </div>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => setDeleteCardId(card.id)}
                       >
