@@ -11,10 +11,12 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Lock, CreditCard, Upload, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { User, Lock, CreditCard, Upload, Trash2, Check, Calendar, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCards, maskCardNumber } from "@/hooks/useCards";
 import { useAvatarUpload, validateImageFile } from "@/hooks/useAvatarUpload";
+import { useSubscription } from "@/hooks/useSubscription";
 import { AddCardDialog } from "@/components/AddCardDialog";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +40,7 @@ export default function Profile() {
   const { user, updatePassword } = useAuth();
   const { cards, deleteCard } = useCards();
   const { updateProfileAvatar, uploading } = useAvatarUpload();
+  const { subscription, isPremium, isTrial } = useSubscription();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +57,9 @@ export default function Profile() {
 
   // Delete card dialog state
   const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
+
+  // Plan upgrade state
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   // Fetch user profile data
   const { data: profile } = useQuery({
@@ -108,6 +114,47 @@ export default function Profile() {
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  // Plan change mutations
+  const changePlan = useMutation({
+    mutationFn: async (plan: 'trial' | 'premium') => {
+      if (!user?.id) throw new Error("User not authenticated");
+
+      const { data, error } = await supabase
+        .from("users")
+        .update({
+          subscription_plan: plan,
+          subscription_expires_at: plan === 'premium' 
+            ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        })
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, plan) => {
+      queryClient.invalidateQueries({ queryKey: ["subscription", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+      toast({
+        title: plan === 'premium' ? "Upgraded to Premium!" : "Downgraded to Trial",
+        description: plan === 'premium' 
+          ? "You now have unlimited access to all features."
+          : "You're now on the trial plan with limited features.",
+      });
+      setIsUpgrading(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to change plan",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsUpgrading(false);
     },
   });
 
@@ -214,6 +261,24 @@ export default function Profile() {
     });
   };
 
+  const handlePlanUpgrade = () => {
+    if (cards.length === 0) {
+      toast({
+        title: "No payment cards found",
+        description: "Please add a payment card before upgrading to Premium.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsUpgrading(true);
+    changePlan.mutate('premium');
+  };
+
+  const handlePlanDowngrade = () => {
+    setIsUpgrading(true);
+    changePlan.mutate('trial');
+  };
+
   return (
     <div className="container max-w-4xl mx-auto p-6">
       <div className="mb-6">
@@ -224,7 +289,7 @@ export default function Profile() {
       </div>
 
       <Tabs defaultValue="personal" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="personal" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Personal Info
@@ -236,6 +301,10 @@ export default function Profile() {
           <TabsTrigger value="cards" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Payment Cards
+          </TabsTrigger>
+          <TabsTrigger value="plan" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Plan
           </TabsTrigger>
         </TabsList>
 
@@ -448,6 +517,121 @@ export default function Profile() {
                       </Button>
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="plan">
+          <Card>
+            <CardHeader>
+              <CardTitle>Subscription Plan</CardTitle>
+              <CardDescription>
+                Manage your subscription and billing preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card className={`relative cursor-pointer hover:ring-2 hover:ring-primary transition-all ${isTrial ? 'ring-2 ring-primary' : ''}`}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-blue-500" />
+                        Trial Plan
+                        {isTrial && <Badge variant="secondary">Current</Badge>}
+                      </CardTitle>
+                      <Badge variant="secondary">Free</Badge>
+                    </div>
+                    <CardDescription>Perfect for getting started</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">30 days free trial</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">Up to 3 custom categories</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">Up to 10 expenses</span>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-50">
+                        <span className="h-4 w-4">×</span>
+                        <span className="text-sm">No analytics access</span>
+                      </div>
+                    </div>
+                    {isPremium && (
+                      <Button 
+                        className="w-full" 
+                        variant="outline"
+                        onClick={handlePlanDowngrade}
+                        disabled={isUpgrading}
+                      >
+                        {isUpgrading ? "Processing..." : "Downgrade to Trial"}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className={`relative cursor-pointer hover:ring-2 hover:ring-primary transition-all border-primary ${isPremium ? 'ring-2 ring-primary' : ''}`}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-green-500" />
+                        Premium Plan
+                        {isPremium && <Badge>Current</Badge>}
+                      </CardTitle>
+                      <Badge>Best Value</Badge>
+                    </div>
+                    <CardDescription>Full access to all features</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">Full analytics dashboard</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">Unlimited custom categories</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">Unlimited expenses</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">Priority support</span>
+                      </div>
+                    </div>
+                    {isTrial && (
+                      <Button 
+                        className="w-full" 
+                        onClick={handlePlanUpgrade}
+                        disabled={isUpgrading}
+                      >
+                        {isUpgrading ? "Processing..." : "Upgrade to Premium"}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {subscription && (
+                <div className="mt-6 p-4 bg-muted rounded-lg">
+                  <h4 className="font-medium mb-2">Current Subscription Details</h4>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>Plan: {subscription.subscription_plan || 'Trial'}</p>
+                    <p>
+                      Expires: {subscription.subscription_expires_at 
+                        ? new Date(subscription.subscription_expires_at).toLocaleDateString()
+                        : 'N/A'}
+                    </p>
+                  </div>
                 </div>
               )}
             </CardContent>
