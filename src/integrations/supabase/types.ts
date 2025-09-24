@@ -222,6 +222,45 @@ export type Database = {
           },
         ]
       }
+      limits: {
+        Row: {
+          amount: number
+          category_id: string
+          created_at: string
+          end_date: string
+          id: string
+          name: string
+          period_type: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          created_at?: string
+          end_date: string
+          id?: string
+          name: string
+          period_type: string
+          start_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          name?: string
+          period_type?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category_id: string
