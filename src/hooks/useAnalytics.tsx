@@ -1,20 +1,34 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, startOfYear, endOfYear } from "date-fns";
 
-export function useExpensesAnalytics() {
+type TimePeriod = "week" | "month" | "year";
+
+function getDateRange(period: TimePeriod) {
+  const now = new Date();
+  switch (period) {
+    case "week":
+      return { start: startOfWeek(now), end: endOfWeek(now) };
+    case "month":
+      return { start: startOfMonth(now), end: endOfMonth(now) };
+    case "year":
+      return { start: startOfYear(now), end: endOfYear(now) };
+    default:
+      return { start: startOfMonth(now), end: endOfMonth(now) };
+  }
+}
+
+export function useExpensesAnalytics(period: TimePeriod = "month") {
   const { user } = useAuth();
-  const currentMonth = new Date();
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
+  const { start: periodStart, end: periodEnd } = getDateRange(period);
 
   return useQuery({
-    queryKey: ["expenses-analytics", user?.id, format(currentMonth, "yyyy-MM")],
+    queryKey: ["expenses-analytics", user?.id, period, format(periodStart, "yyyy-MM-dd")],
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // Get all expenses for current month
+      // Get all expenses for selected period
       const { data: expenses, error } = await supabase
         .from("expenses")
         .select(
@@ -24,16 +38,16 @@ export function useExpensesAnalytics() {
         `
         )
         .eq("user_id", user.id)
-        .gte("expense_date", format(monthStart, "yyyy-MM-dd"))
-        .lte("expense_date", format(monthEnd, "yyyy-MM-dd"))
+        .gte("expense_date", format(periodStart, "yyyy-MM-dd"))
+        .lte("expense_date", format(periodEnd, "yyyy-MM-dd"))
         .order("expense_date", { ascending: true });
 
       if (error) throw error;
 
       // Daily expenses
       const dailyExpenses = eachDayOfInterval({
-        start: monthStart,
-        end: monthEnd,
+        start: periodStart,
+        end: periodEnd,
       }).map((day) => {
         const dayString = format(day, "yyyy-MM-dd");
         const dayExpenses =
@@ -43,7 +57,7 @@ export function useExpensesAnalytics() {
           0
         );
         return {
-          date: format(day, "MMM dd"),
+          date: format(day, period === "year" ? "MMM" : "MMM dd"),
           amount: total,
         };
       });
@@ -109,11 +123,12 @@ export function useExpensesAnalytics() {
   });
 }
 
-export function useCategoriesAnalytics() {
+export function useCategoriesAnalytics(period: TimePeriod = "month") {
   const { user } = useAuth();
+  const { start: periodStart, end: periodEnd } = getDateRange(period);
 
   return useQuery({
-    queryKey: ["categories-analytics", user?.id],
+    queryKey: ["categories-analytics", user?.id, period, format(periodStart, "yyyy-MM-dd")],
     queryFn: async () => {
       if (!user?.id) return null;
 
@@ -131,28 +146,24 @@ export function useCategoriesAnalytics() {
 
       if (error) throw error;
 
-      const currentMonth = new Date();
-      const monthStart = startOfMonth(currentMonth);
-      const monthEnd = endOfMonth(currentMonth);
-
       const categoryStats =
         categories?.map((category) => {
           const allExpenses = category.expenses || [];
-          const monthlyExpenses = allExpenses.filter((exp) => {
+          const periodExpenses = allExpenses.filter((exp) => {
             const expDate = new Date(exp.expense_date);
-            return expDate >= monthStart && expDate <= monthEnd;
+            return expDate >= periodStart && expDate <= periodEnd;
           });
 
           return {
             name: category.name,
             color: category.color,
             totalExpenses: allExpenses.length,
-            monthlyExpenses: monthlyExpenses.length,
+            periodExpenses: periodExpenses.length,
             totalAmount: allExpenses.reduce(
               (sum, exp) => sum + Number(exp.amount),
               0
             ),
-            monthlyAmount: monthlyExpenses.reduce(
+            periodAmount: periodExpenses.reduce(
               (sum, exp) => sum + Number(exp.amount),
               0
             ),
@@ -179,10 +190,10 @@ export function useCategoriesAnalytics() {
           fill: cat.color,
         }));
 
-      // Monthly vs All time comparison
-      const monthlyVsAllTime = categoryStats.map((cat) => ({
+      // Period vs All time comparison
+      const periodVsAllTime = categoryStats.map((cat) => ({
         name: cat.name,
-        monthly: cat.monthlyAmount,
+        period: cat.periodAmount,
         allTime: cat.totalAmount,
         fill: cat.color,
       }));
@@ -190,7 +201,7 @@ export function useCategoriesAnalytics() {
       return {
         mostUsedCategories,
         highestSpendingCategories,
-        monthlyVsAllTime,
+        periodVsAllTime,
         categoryStats,
         totalCategories: categories?.length || 0,
       };
@@ -199,11 +210,12 @@ export function useCategoriesAnalytics() {
   });
 }
 
-export function useProductsAnalytics() {
+export function useProductsAnalytics(period: TimePeriod = "month") {
   const { user } = useAuth();
+  const { start: periodStart, end: periodEnd } = getDateRange(period);
 
   return useQuery({
-    queryKey: ["products-analytics", user?.id],
+    queryKey: ["products-analytics", user?.id, period, format(periodStart, "yyyy-MM-dd")],
     queryFn: async () => {
       if (!user?.id) return null;
 
@@ -224,23 +236,19 @@ export function useProductsAnalytics() {
 
       if (error) throw error;
 
-      const currentMonth = new Date();
-      const monthStart = startOfMonth(currentMonth);
-      const monthEnd = endOfMonth(currentMonth);
-
       const productStats =
         products?.map((product) => {
           const allExpenseProducts = product.expense_products || [];
-          const monthlyExpenseProducts = allExpenseProducts.filter((ep) => {
+          const periodExpenseProducts = allExpenseProducts.filter((ep) => {
             const expDate = new Date(ep.expenses?.expense_date);
-            return expDate >= monthStart && expDate <= monthEnd;
+            return expDate >= periodStart && expDate <= periodEnd;
           });
 
           const totalQuantity = allExpenseProducts.reduce(
             (sum, ep) => sum + ep.quantity,
             0
           );
-          const monthlyQuantity = monthlyExpenseProducts.reduce(
+          const periodQuantity = periodExpenseProducts.reduce(
             (sum, ep) => sum + ep.quantity,
             0
           );
@@ -248,7 +256,7 @@ export function useProductsAnalytics() {
             (sum, ep) => sum + ep.quantity * Number(ep.price_per_unit),
             0
           );
-          const monthlySpent = monthlyExpenseProducts.reduce(
+          const periodSpent = periodExpenseProducts.reduce(
             (sum, ep) => sum + ep.quantity * Number(ep.price_per_unit),
             0
           );
@@ -257,11 +265,11 @@ export function useProductsAnalytics() {
             name: product.name,
             defaultPrice: Number(product.default_price || 0),
             totalQuantity,
-            monthlyQuantity,
+            periodQuantity,
             totalSpent,
-            monthlySpent,
+            periodSpent,
             timesUsed: allExpenseProducts.length,
-            monthlyUsed: monthlyExpenseProducts.length,
+            periodUsed: periodExpenseProducts.length,
           };
         }) || [];
 
@@ -285,13 +293,13 @@ export function useProductsAnalytics() {
           fill: "#06B6D4",
         }));
 
-      // Monthly vs All time purchases
-      const monthlyVsAllTime = productStats
+      // Period vs All time purchases
+      const periodVsAllTime = productStats
         .filter((prod) => prod.totalQuantity > 0)
         .slice(0, 10)
         .map((prod) => ({
           name: prod.name,
-          monthly: prod.monthlyQuantity,
+          period: prod.periodQuantity,
           allTime: prod.totalQuantity,
         }));
 
@@ -308,7 +316,7 @@ export function useProductsAnalytics() {
       return {
         mostPurchasedProducts,
         highestSpendingProducts,
-        monthlyVsAllTime,
+        periodVsAllTime,
         usageFrequency,
         productStats,
         totalProducts: products?.length || 0,

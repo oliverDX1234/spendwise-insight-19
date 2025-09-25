@@ -8,6 +8,13 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -40,13 +47,14 @@ import {
 } from "lucide-react";
 
 export default function Analytics() {
+  const [period, setPeriod] = useState<"week" | "month" | "year">("month");
   const { isTrial } = useSubscription();
   const { data: expensesData, isLoading: expensesLoading } =
-    useExpensesAnalytics();
+    useExpensesAnalytics(period);
   const { data: categoriesData, isLoading: categoriesLoading } =
-    useCategoriesAnalytics();
+    useCategoriesAnalytics(period);
   const { data: productsData, isLoading: productsLoading } =
-    useProductsAnalytics();
+    useProductsAnalytics(period);
 
   // Color array for product pie chart (50 colors)
   const productColors = [
@@ -123,11 +131,23 @@ export default function Analytics() {
 
   return (
     <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Analytics</h1>
-        <p className="text-muted-foreground">
-          Get insights into your spending patterns and financial habits.
-        </p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Analytics</h1>
+          <p className="text-muted-foreground">
+            Get insights into your spending patterns and financial habits.
+          </p>
+        </div>
+        <Select value={period} onValueChange={(value: "week" | "month" | "year") => setPeriod(value)}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Select time period" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="week">This Week</SelectItem>
+            <SelectItem value="month">This Month</SelectItem>
+            <SelectItem value="year">This Year</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs defaultValue="expenses" className="space-y-6">
@@ -151,7 +171,7 @@ export default function Analytics() {
                   ${expensesData?.totalAmount?.toFixed(2) || "0.00"}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {expensesData?.totalExpenses || 0} transactions this month
+                  {expensesData?.totalExpenses || 0} transactions this {period}
                 </p>
               </CardContent>
             </Card>
@@ -163,10 +183,10 @@ export default function Analytics() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Daily Expenses This Month
+                  Daily Expenses This {period === "week" ? "Week" : period === "month" ? "Month" : "Year"}
                 </CardTitle>
                 <CardDescription>
-                  Track your spending patterns throughout the month
+                  Track your spending patterns throughout the {period}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -259,7 +279,7 @@ export default function Analytics() {
                   Expenses by Category
                 </CardTitle>
                 <CardDescription>
-                  See which categories you spend the most on
+                  See which categories you spend the most on this {period}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -290,7 +310,7 @@ export default function Analytics() {
               <CardHeader>
                 <CardTitle>Top 10 Expenses</CardTitle>
                 <CardDescription>
-                  Your highest individual expenses this month
+                  Your highest individual expenses this {period}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -423,16 +443,16 @@ export default function Analytics() {
             {/* Category Usage Trends */}
             <Card className="md:col-span-2">
               <CardHeader>
-                <CardTitle>Monthly vs All-Time Spending</CardTitle>
+                <CardTitle>Current Period vs All-Time Spending</CardTitle>
                 <CardDescription>
-                  Compare this month's spending with all-time totals by category
+                  Compare this {period}'s spending with all-time totals by category
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ChartContainer
                   config={{
-                    monthly: {
-                      label: "This Month",
+                    period: {
+                      label: `This ${period === "week" ? "Week" : period === "month" ? "Month" : "Year"}`,
                       color: "#8B5CF6",
                     },
                     allTime: {
@@ -444,13 +464,13 @@ export default function Analytics() {
                 >
                   <ResponsiveContainer>
                     <BarChart
-                      data={categoriesData?.monthlyVsAllTime?.slice(0, 8) || []}
+                      data={categoriesData?.periodVsAllTime?.slice(0, 8) || []}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="monthly" fill="#8B5CF6" />
+                      <Bar dataKey="period" fill="#8B5CF6" />
                       <Bar dataKey="allTime" fill="#06B6D4" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -607,19 +627,19 @@ export default function Analytics() {
               </CardContent>
             </Card>
 
-            {/* Monthly vs All-Time Purchases */}
+            {/* Current Period vs All-Time Purchases */}
             <Card>
               <CardHeader>
-                <CardTitle>Monthly vs All-Time Purchases</CardTitle>
+                <CardTitle>Current Period vs All-Time Purchases</CardTitle>
                 <CardDescription>
-                  Compare current month with total purchases
+                  Compare current {period} with total purchases
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ChartContainer
                   config={{
-                    monthly: {
-                      label: "This Month",
+                    period: {
+                      label: `This ${period === "week" ? "Week" : period === "month" ? "Month" : "Year"}`,
                       color: "#8B5CF6",
                     },
                     allTime: {
@@ -630,12 +650,12 @@ export default function Analytics() {
                   className="h-[300px] w-full"
                 >
                   <ResponsiveContainer>
-                    <BarChart data={productsData?.monthlyVsAllTime || []}>
+                    <BarChart data={productsData?.periodVsAllTime || []}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="monthly" fill="#8B5CF6" />
+                      <Bar dataKey="period" fill="#8B5CF6" />
                       <Bar dataKey="allTime" fill="#06B6D4" />
                     </BarChart>
                   </ResponsiveContainer>
