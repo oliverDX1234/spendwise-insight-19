@@ -1,8 +1,9 @@
 import { useState } from "react"
-import { Home, Receipt, PieChart, Settings, CreditCard, Target, User, LogOut, AlertCircle, BarChart3 } from "lucide-react"
+import { Home, Receipt, PieChart, Settings, CreditCard, Target, User, LogOut, AlertCircle, BarChart3, Shield } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 import { useSubscription } from "@/hooks/useSubscription"
+import { useUserRole } from "@/hooks/useUserRole"
 
 import {
   Sidebar,
@@ -29,12 +30,19 @@ const items = [
   { title: "Settings", url: "/settings", icon: Settings },
 ]
 
+const adminItems = [
+  { title: "Dashboard", url: "/admin", icon: Shield },
+]
+
 export function AppSidebar() {
   const { state } = useSidebar()
   const location = useLocation()
   const currentPath = location.pathname
   const { signOut } = useAuth()
   const { isTrial } = useSubscription()
+  const { isAdmin } = useUserRole()
+
+  const menuItems = isAdmin ? adminItems : items;
 
   const isActive = (path: string) => currentPath === path
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
@@ -55,8 +63,8 @@ export function AppSidebar() {
 
             <SidebarGroupContent>
               <SidebarMenu>
-                {items.map((item) => {
-                  const isDisabled = item.requiresPremium && isTrial;
+                {menuItems.map((item) => {
+                  const isDisabled = (item as any).requiresPremium && isTrial && !isAdmin;
                   
                   return (
                     <SidebarMenuItem key={item.title}>
@@ -91,14 +99,16 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink to="/profile" className={getNavCls}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {!isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink to="/profile" className={getNavCls}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Button
