@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Expenses from "./pages/Expenses";
 import Categories from "./pages/Categories";
 import Analytics from "./pages/Analytics";
+import Reports from "./pages/Reports";
 import Limits from "./pages/Limits";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
@@ -80,6 +81,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Reports />
               </ProtectedRoute>
             }
           />

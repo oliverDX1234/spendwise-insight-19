@@ -299,6 +299,36 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          created_at: string
+          excel_url: string | null
+          id: string
+          month_year: string
+          pdf_url: string | null
+          report_number: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          excel_url?: string | null
+          id?: string
+          month_year: string
+          pdf_url?: string | null
+          report_number: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          excel_url?: string | null
+          id?: string
+          month_year?: string
+          pdf_url?: string | null
+          report_number?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
