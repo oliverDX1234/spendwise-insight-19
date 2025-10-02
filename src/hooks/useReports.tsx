@@ -58,18 +58,28 @@ export function useReports() {
 
   const generateCurrentMonthReport = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "generate-current-month-report",
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      if (!token) throw new Error("Not authenticated");
+
+      const response = await fetch(
+        `https://alpdddwpjrwapqedcwdw.supabase.co/functions/v1/generate-current-month-report`,
         {
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
         }
       );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to generate report");
+      }
 
-      const blob = new Blob([data]);
+      const blob = await response.blob();
       const link = document.createElement("a");
       link.href = window.URL.createObjectURL(blob);
       const now = new Date();
