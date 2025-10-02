@@ -1,26 +1,38 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Plus, Calendar, Tag, Settings, TrendingUp, DollarSign, CreditCard, Target } from "lucide-react";
+import { Plus, TrendingUp, CreditCard, BarChart3, ShoppingCart, Lock } from "lucide-react";
 import { ExpenseCard } from "@/components/ExpenseCard";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { QuickStats } from "@/components/QuickStats";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useBudgets } from "@/hooks/useBudgets";
+import { useLimits } from "@/hooks/useLimits";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { useAuth } from "@/hooks/useAuth";
-import { Navigate } from "react-router-dom";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useExpensesAnalytics, useCategoriesAnalytics, useProductsAnalytics } from "@/hooks/useAnalytics";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 export default function Index() {
+  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { expenses, loading: expensesLoading, createExpense, deleteExpense } = useExpenses();
   const { budgets, loading: budgetsLoading } = useBudgets();
+  const { limits, loading: limitsLoading } = useLimits();
   const { needsOnboarding, isLoading: onboardingLoading } = useOnboarding();
+  const { isPremium, isTrial, isLoading: subscriptionLoading } = useSubscription();
   const [showAddExpense, setShowAddExpense] = useState(false);
   const { toast } = useToast();
+
+  // Analytics hooks
+  const { data: expensesAnalytics, isLoading: analyticsLoading } = useExpensesAnalytics("month");
+  const { data: categoriesAnalytics } = useCategoriesAnalytics("month");
+  const { data: productsAnalytics } = useProductsAnalytics("month");
 
   // If user needs onboarding, show onboarding dialog and block everything else
   if (!authLoading && !onboardingLoading && needsOnboarding) {
@@ -69,8 +81,7 @@ export default function Index() {
     }
   };
 
-  // Calculate stats from real data
-  const totalSpent = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  // Calculate monthly stats
   const currentMonthExpenses = expenses.filter(expense => {
     const expenseDate = new Date(expense.expense_date);
     const now = new Date();
@@ -79,8 +90,25 @@ export default function Index() {
   });
   
   const monthlySpent = currentMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
-  const totalBudget = budgets.reduce((sum, budget) => sum + Number(budget.amount), 0);
-  const remainingBudget = totalBudget - monthlySpent;
+  const expenseCount = currentMonthExpenses.length;
+  const averageExpense = expenseCount > 0 ? monthlySpent / expenseCount : 0;
+
+  // Calculate active limits
+  const now = new Date();
+  const activeLimits = limits.filter(limit => {
+    const endDate = new Date(limit.end_date);
+    return endDate >= now;
+  });
+
+  // Check which limits are reached
+  const limitsReached = activeLimits.filter(limit => {
+    const limitExpenses = currentMonthExpenses.filter(exp => exp.category_id === limit.category_id);
+    const limitSpent = limitExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+    return limitSpent >= limit.amount;
+  }).length;
+
+  // Chart colors
+  const COLORS = ['hsl(217 91% 60%)', 'hsl(142 76% 36%)', 'hsl(38 92% 50%)', 'hsl(0 84% 60%)', 'hsl(270 60% 60%)', 'hsl(180 60% 50%)'];
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,10 +132,31 @@ export default function Index() {
                 <Plus className="mr-2 h-5 w-5" />
                 Add Expense
               </Button>
-              <Button size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
-                <TrendingUp className="mr-2 h-5 w-5" />
-                View Analytics
-              </Button>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button 
+                        size="lg" 
+                        variant="outline" 
+                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                        disabled={isTrial}
+                        onClick={() => !isTrial && navigate('/analytics')}
+                      >
+                        {isTrial && <Lock className="mr-2 h-5 w-5" />}
+                        <TrendingUp className="mr-2 h-5 w-5" />
+                        View Analytics
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {isTrial && (
+                    <TooltipContent>
+                      <p>Upgrade to Premium to access Analytics</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         </div>
@@ -116,107 +165,179 @@ export default function Index() {
       {/* Dashboard Content */}
       <section className="py-12">
         <div className="container mx-auto px-4">
+          {/* Monthly Stats Label */}
+          <div className="mb-4">
+            <h2 className="text-2xl font-semibold text-foreground">This Month</h2>
+          </div>
+
           {/* Quick Stats */}
           <QuickStats 
-            totalSpent={totalSpent} 
-            remainingBudget={remainingBudget} 
-            expenseCount={expenses.length}
-            loading={expensesLoading || budgetsLoading}
+            monthlySpent={monthlySpent} 
+            activeLimits={activeLimits.length}
+            limitsReached={limitsReached}
+            expenseCount={expenseCount}
+            averageExpense={averageExpense}
+            loading={expensesLoading || budgetsLoading || limitsLoading}
           />
           
-          {/* Main Content Grid */}
-          <div className="mt-8 grid lg:grid-cols-3 gap-6">
-            {/* Recent Expenses */}
-            <div className="lg:col-span-2 space-y-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <div>
-                    <CardTitle>Recent Expenses</CardTitle>
-                    <CardDescription>Your latest transactions</CardDescription>
+          {/* Recent Expenses - Full Width */}
+          <div className="mt-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <div>
+                  <CardTitle>Recent Expenses</CardTitle>
+                  <CardDescription>Your latest transactions</CardDescription>
+                </div>
+                <Button onClick={() => setShowAddExpense(true)} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Expense
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {expensesLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse bg-muted h-24 rounded-lg"></div>
+                    ))}
                   </div>
-                  <Button onClick={() => setShowAddExpense(true)} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Expense
-                  </Button>
+                ) : expenses.slice(0, 5).length > 0 ? (
+                  expenses.slice(0, 5).map((expense) => (
+                    <ExpenseCard 
+                      key={expense.id} 
+                      expense={expense}
+                      onDelete={handleDeleteExpense}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No expenses yet. Add your first expense to get started!</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Analytics Section */}
+          <div className="mt-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-6">Analytics Overview</h2>
+            
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Daily Expenses Chart */}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <BarChart3 className="mr-2 h-5 w-5" />
+                    Daily Expenses This Month
+                  </CardTitle>
+                  <CardDescription>Your spending pattern throughout the month</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {expensesLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="animate-pulse bg-muted h-24 rounded-lg"></div>
-                      ))}
+                <CardContent>
+                  {analyticsLoading ? (
+                    <div className="h-[300px] flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
-                  ) : expenses.slice(0, 5).length > 0 ? (
-                    expenses.slice(0, 5).map((expense) => (
-                      <ExpenseCard 
-                        key={expense.id} 
-                        expense={expense}
-                        onDelete={handleDeleteExpense}
-                      />
-                    ))
+                  ) : expensesAnalytics?.dailyExpenses && expensesAnalytics.dailyExpenses.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={expensesAnalytics.dailyExpenses}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="hsl(var(--muted-foreground))"
+                          style={{ fontSize: '12px' }}
+                        />
+                        <YAxis 
+                          stroke="hsl(var(--muted-foreground))"
+                          style={{ fontSize: '12px' }}
+                        />
+                        <RechartsTooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--popover))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Bar dataKey="amount" fill="hsl(217 91% 60%)" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No expenses yet. Add your first expense to get started!</p>
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      <p>No expense data available for this month</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
-            </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Budget Overview */}
+              {/* Most Used Categories */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <Target className="mr-2 h-5 w-5" />
-                    Budget Overview
+                    <BarChart3 className="mr-2 h-5 w-5" />
+                    Most Used Categories
                   </CardTitle>
+                  <CardDescription>Top categories by frequency</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Spent</span>
-                        <span>${monthlySpent.toFixed(2)}</span>
-                      </div>
-                      <Progress value={totalBudget > 0 ? (monthlySpent / totalBudget) * 100 : 0} className="h-2" />
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>${monthlySpent.toFixed(2)} of ${totalBudget.toFixed(2)}</span>
-                        <span>{totalBudget > 0 ? Math.round((monthlySpent / totalBudget) * 100) : 0}%</span>
-                      </div>
+                  {categoriesAnalytics?.mostUsedCategories && categoriesAnalytics.mostUsedCategories.length > 0 ? (
+                    <div className="space-y-4">
+                      {categoriesAnalytics.mostUsedCategories.slice(0, 5).map((category, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: category.fill }}
+                            />
+                            <span className="text-sm font-medium">{category.name}</span>
+                          </div>
+                          <span className="text-sm text-muted-foreground">{category.count} times</span>
+                        </div>
+                      ))}
                     </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Remaining</span>
-                      <span className={`font-semibold ${remainingBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        ${Math.abs(remainingBudget).toFixed(2)}
-                      </span>
+                  ) : (
+                    <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                      <p>No category data available</p>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
-              {/* Quick Actions */}
-              <Card>
+              {/* Most Purchased Products */}
+              <Card className="lg:col-span-3">
                 <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                  <CardDescription>Manage your expenses efficiently</CardDescription>
+                  <CardTitle className="flex items-center">
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                    Most Purchased Products
+                  </CardTitle>
+                  <CardDescription>Your top products by quantity purchased</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    View Calendar
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Tag className="mr-2 h-4 w-4" />
-                    Categories
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Button>
+                <CardContent>
+                  {productsAnalytics?.mostPurchasedProducts && productsAnalytics.mostPurchasedProducts.length > 0 ? (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {productsAnalytics.mostPurchasedProducts.slice(0, 6).map((product, index) => (
+                        <div 
+                          key={index} 
+                          className="p-4 rounded-lg border border-border bg-card"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-medium text-sm">{product.name}</h4>
+                            <div 
+                              className="w-2 h-2 rounded-full flex-shrink-0 mt-1" 
+                              style={{ backgroundColor: product.fill }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">
+                              Quantity: <span className="font-medium text-foreground">{product.quantity}</span>
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-[150px] flex items-center justify-center text-muted-foreground">
+                      <p>No product data available</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
