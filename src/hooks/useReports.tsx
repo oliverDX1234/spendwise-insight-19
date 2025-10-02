@@ -56,10 +56,43 @@ export function useReports() {
     }
   };
 
+  const generateCurrentMonthReport = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "generate-current-month-report",
+        {
+          headers: {
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+        }
+      );
+
+      if (error) throw error;
+
+      const blob = new Blob([data]);
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      const now = new Date();
+      const monthYear = now.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+      });
+      link.download = `SpendWise_Report_${monthYear.replace(" ", "_")}.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+
+      toast.success("Current month report downloaded successfully");
+    } catch (error: any) {
+      console.error("Error generating current month report:", error);
+      toast.error("Failed to generate report. Please try again.");
+    }
+  };
+
   return {
     reports,
     isLoading,
     error,
     downloadFile,
+    generateCurrentMonthReport,
   };
 }

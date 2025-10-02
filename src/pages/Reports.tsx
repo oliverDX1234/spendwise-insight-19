@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -8,12 +9,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, FileDown } from "lucide-react";
 import { useReports } from "@/hooks/useReports";
 import { format } from "date-fns";
 
 export default function Reports() {
-  const { reports, isLoading, downloadFile } = useReports();
+  const { reports, isLoading, downloadFile, generateCurrentMonthReport } = useReports();
+  const [isGenerating, setIsGenerating] = React.useState(false);
+
+  const handleGenerateCurrentReport = async () => {
+    setIsGenerating(true);
+    await generateCurrentMonthReport();
+    setIsGenerating(false);
+  };
 
   if (isLoading) {
     return (
@@ -35,6 +43,17 @@ export default function Reports() {
       </div>
 
       <Card className="p-6">
+        <div className="mb-4 flex justify-end">
+          <Button
+            onClick={handleGenerateCurrentReport}
+            disabled={isGenerating}
+            size="lg"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            {isGenerating ? "Generating..." : "Download Current Month Report"}
+          </Button>
+        </div>
+
         {reports.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
