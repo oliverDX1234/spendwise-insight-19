@@ -1,7 +1,20 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, CreditCard, BarChart3, ShoppingCart, Lock } from "lucide-react";
+import {
+  Plus,
+  TrendingUp,
+  CreditCard,
+  BarChart3,
+  ShoppingCart,
+  Lock,
+} from "lucide-react";
 import { ExpenseCard } from "@/components/ExpenseCard";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { QuickStats } from "@/components/QuickStats";
@@ -12,25 +25,56 @@ import { useLimits } from "@/hooks/useLimits";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useExpensesAnalytics, useCategoriesAnalytics, useProductsAnalytics } from "@/hooks/useAnalytics";
+import {
+  useExpensesAnalytics,
+  useCategoriesAnalytics,
+  useProductsAnalytics,
+} from "@/hooks/useAnalytics";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 export default function Index() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { expenses, loading: expensesLoading, createExpense, deleteExpense } = useExpenses();
+  const {
+    expenses,
+    loading: expensesLoading,
+    createExpense,
+    deleteExpense,
+  } = useExpenses();
   const { budgets, loading: budgetsLoading } = useBudgets();
   const { limits, loading: limitsLoading } = useLimits();
   const { needsOnboarding, isLoading: onboardingLoading } = useOnboarding();
-  const { isPremium, isTrial, isLoading: subscriptionLoading } = useSubscription();
+  const {
+    isPremium,
+    isTrial,
+    isLoading: subscriptionLoading,
+  } = useSubscription();
   const [showAddExpense, setShowAddExpense] = useState(false);
   const { toast } = useToast();
 
   // Analytics hooks
-  const { data: expensesAnalytics, isLoading: analyticsLoading } = useExpensesAnalytics("month");
+  const { data: expensesAnalytics, isLoading: analyticsLoading } =
+    useExpensesAnalytics("month");
   const { data: categoriesAnalytics } = useCategoriesAnalytics("month");
   const { data: productsAnalytics } = useProductsAnalytics("month");
 
@@ -38,7 +82,7 @@ export default function Index() {
   if (!authLoading && !onboardingLoading && needsOnboarding) {
     return (
       <div className="min-h-screen bg-background">
-        <OnboardingDialog 
+        <OnboardingDialog
           isOpen={true}
           onComplete={() => {
             window.location.reload(); // Refresh to update user state
@@ -82,33 +126,68 @@ export default function Index() {
   };
 
   // Calculate monthly stats
-  const currentMonthExpenses = expenses.filter(expense => {
+  const currentMonthExpenses = expenses.filter((expense) => {
     const expenseDate = new Date(expense.expense_date);
     const now = new Date();
-    return expenseDate.getMonth() === now.getMonth() && 
-           expenseDate.getFullYear() === now.getFullYear();
+    return (
+      expenseDate.getMonth() === now.getMonth() &&
+      expenseDate.getFullYear() === now.getFullYear()
+    );
   });
-  
-  const monthlySpent = currentMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+
+  const monthlySpent = currentMonthExpenses.reduce(
+    (sum, expense) => sum + Number(expense.amount),
+    0
+  );
   const expenseCount = currentMonthExpenses.length;
   const averageExpense = expenseCount > 0 ? monthlySpent / expenseCount : 0;
 
   // Calculate active limits
   const now = new Date();
-  const activeLimits = limits.filter(limit => {
+  const activeLimits = limits.filter((limit) => {
     const endDate = new Date(limit.end_date);
     return endDate >= now;
   });
 
   // Check which limits are reached
-  const limitsReached = activeLimits.filter(limit => {
-    const limitExpenses = currentMonthExpenses.filter(exp => exp.category_id === limit.category_id);
-    const limitSpent = limitExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+  const limitsReached = activeLimits.filter((limit) => {
+    const limitExpenses = currentMonthExpenses.filter(
+      (exp) => exp.category_id === limit.category_id
+    );
+    const limitSpent = limitExpenses.reduce(
+      (sum, exp) => sum + Number(exp.amount),
+      0
+    );
     return limitSpent >= limit.amount;
   }).length;
 
-  // Chart colors
-  const COLORS = ['hsl(217 91% 60%)', 'hsl(142 76% 36%)', 'hsl(38 92% 50%)', 'hsl(0 84% 60%)', 'hsl(270 60% 60%)', 'hsl(180 60% 50%)'];
+  // Chart colors (matching Analytics page)
+  const productColors = [
+    "#06B6D4",
+    "#8B5CF6",
+    "#F59E0B",
+    "#EF4444",
+    "#10B981",
+    "#F97316",
+    "#3B82F6",
+    "#EC4899",
+    "#84CC16",
+    "#6366F1",
+    "#14B8A6",
+    "#F43F5E",
+    "#8B5A2B",
+    "#7C3AED",
+    "#059669",
+    "#DC2626",
+    "#2563EB",
+    "#CA8A04",
+    "#16A34A",
+    "#DB2777",
+    "#0891B2",
+    "#9333EA",
+    "#EA580C",
+    "#4F46E5",
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,14 +196,15 @@ export default function Index() {
         <div className="container relative mx-auto px-4">
           <div className="mx-auto max-w-4xl text-center">
             <h1 className="mb-6 text-5xl font-bold text-white">
-              Welcome to <span className="text-primary-foreground">SpendWise</span>
+              Welcome to{" "}
+              <span className="text-primary-foreground">SpendWise</span>
             </h1>
             <p className="mb-8 text-xl text-white/90">
               Your smart expense tracker for better financial decisions
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 variant="secondary"
                 onClick={() => setShowAddExpense(true)}
                 className="shadow-lg"
@@ -132,17 +212,17 @@ export default function Index() {
                 <Plus className="mr-2 h-5 w-5" />
                 Add Expense
               </Button>
-              
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span>
-                      <Button 
-                        size="lg" 
-                        variant="outline" 
+                      <Button
+                        size="lg"
+                        variant="outline"
                         className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                         disabled={isTrial}
-                        onClick={() => !isTrial && navigate('/analytics')}
+                        onClick={() => !isTrial && navigate("/analytics")}
                       >
                         {isTrial && <Lock className="mr-2 h-5 w-5" />}
                         <TrendingUp className="mr-2 h-5 w-5" />
@@ -167,19 +247,21 @@ export default function Index() {
         <div className="container mx-auto px-4">
           {/* Monthly Stats Label */}
           <div className="mb-4">
-            <h2 className="text-2xl font-semibold text-foreground">This Month</h2>
+            <h2 className="text-2xl font-semibold text-foreground">
+              This Month
+            </h2>
           </div>
 
           {/* Quick Stats */}
-          <QuickStats 
-            monthlySpent={monthlySpent} 
+          <QuickStats
+            monthlySpent={monthlySpent}
             activeLimits={activeLimits.length}
             limitsReached={limitsReached}
             expenseCount={expenseCount}
             averageExpense={averageExpense}
             loading={expensesLoading || budgetsLoading || limitsLoading}
           />
-          
+
           {/* Recent Expenses - Full Width */}
           <div className="mt-8">
             <Card>
@@ -197,21 +279,28 @@ export default function Index() {
                 {expensesLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="animate-pulse bg-muted h-24 rounded-lg"></div>
+                      <div
+                        key={i}
+                        className="animate-pulse bg-muted h-24 rounded-lg"
+                      ></div>
                     ))}
                   </div>
                 ) : expenses.slice(0, 5).length > 0 ? (
-                  expenses.slice(0, 5).map((expense) => (
-                    <ExpenseCard 
-                      key={expense.id} 
-                      expense={expense}
-                      onDelete={handleDeleteExpense}
-                    />
-                  ))
+                  expenses
+                    .slice(0, 5)
+                    .map((expense) => (
+                      <ExpenseCard
+                        key={expense.id}
+                        expense={expense}
+                        onDelete={handleDeleteExpense}
+                      />
+                    ))
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No expenses yet. Add your first expense to get started!</p>
+                    <p>
+                      No expenses yet. Add your first expense to get started!
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -220,44 +309,56 @@ export default function Index() {
 
           {/* Analytics Section */}
           <div className="mt-8">
-            <h2 className="text-2xl font-semibold text-foreground mb-6">Analytics Overview</h2>
-            
-            <div className="grid lg:grid-cols-3 gap-6">
-              {/* Daily Expenses Chart */}
-              <Card className="lg:col-span-2">
+            <h2 className="text-2xl font-semibold text-foreground mb-6">
+              Analytics Overview
+            </h2>
+
+            <div className="grid gap-6">
+              {/* Daily Expenses Chart - Full Width */}
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <BarChart3 className="mr-2 h-5 w-5" />
                     Daily Expenses This Month
                   </CardTitle>
-                  <CardDescription>Your spending pattern throughout the month</CardDescription>
+                  <CardDescription>
+                    Your spending pattern throughout the month
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {analyticsLoading ? (
                     <div className="h-[300px] flex items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
-                  ) : expensesAnalytics?.dailyExpenses && expensesAnalytics.dailyExpenses.length > 0 ? (
+                  ) : expensesAnalytics?.dailyExpenses &&
+                    expensesAnalytics.dailyExpenses.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={expensesAnalytics.dailyExpenses}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="hsl(var(--muted-foreground))"
-                          style={{ fontSize: '12px' }}
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="hsl(var(--border))"
                         />
-                        <YAxis 
+                        <XAxis
+                          dataKey="date"
                           stroke="hsl(var(--muted-foreground))"
-                          style={{ fontSize: '12px' }}
+                          style={{ fontSize: "12px" }}
                         />
-                        <RechartsTooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--popover))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px'
+                        <YAxis
+                          stroke="hsl(var(--muted-foreground))"
+                          style={{ fontSize: "12px" }}
+                        />
+                        <RechartsTooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--popover))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
                           }}
                         />
-                        <Bar dataKey="amount" fill="hsl(217 91% 60%)" radius={[8, 8, 0, 0]} />
+                        <Bar
+                          dataKey="amount"
+                          fill="hsl(217 91% 60%)"
+                          radius={[8, 8, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -268,90 +369,138 @@ export default function Index() {
                 </CardContent>
               </Card>
 
-              {/* Most Used Categories */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <BarChart3 className="mr-2 h-5 w-5" />
-                    Most Used Categories
-                  </CardTitle>
-                  <CardDescription>Top categories by frequency</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {categoriesAnalytics?.mostUsedCategories && categoriesAnalytics.mostUsedCategories.length > 0 ? (
-                    <div className="space-y-4">
-                      {categoriesAnalytics.mostUsedCategories.slice(0, 5).map((category, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: category.fill }}
-                            />
-                            <span className="text-sm font-medium">{category.name}</span>
-                          </div>
-                          <span className="text-sm text-muted-foreground">{category.count} times</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                      <p>No category data available</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Most Purchased Products */}
-              <Card className="lg:col-span-3">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <ShoppingCart className="mr-2 h-5 w-5" />
-                    Most Purchased Products
-                  </CardTitle>
-                  <CardDescription>Your top products by quantity purchased</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {productsAnalytics?.mostPurchasedProducts && productsAnalytics.mostPurchasedProducts.length > 0 ? (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {productsAnalytics.mostPurchasedProducts.slice(0, 6).map((product, index) => (
-                        <div 
-                          key={index} 
-                          className="p-4 rounded-lg border border-border bg-card"
+              {/* Categories and Products Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Most Used Categories */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <BarChart3 className="mr-2 h-5 w-5" />
+                      Most Used Categories
+                    </CardTitle>
+                    <CardDescription>
+                      Top categories by frequency
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {categoriesAnalytics?.mostUsedCategories &&
+                    categoriesAnalytics.mostUsedCategories.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart
+                          data={categoriesAnalytics.mostUsedCategories.slice(
+                            0,
+                            5
+                          )}
                         >
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium text-sm">{product.name}</h4>
-                            <div 
-                              className="w-2 h-2 rounded-full flex-shrink-0 mt-1" 
-                              style={{ backgroundColor: product.fill }}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground">
-                              Quantity: <span className="font-medium text-foreground">{product.quantity}</span>
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="h-[150px] flex items-center justify-center text-muted-foreground">
-                      <p>No product data available</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="hsl(var(--border))"
+                          />
+                          <XAxis
+                            dataKey="name"
+                            stroke="hsl(var(--muted-foreground))"
+                            style={{ fontSize: "12px" }}
+                          />
+                          <YAxis
+                            stroke="hsl(var(--muted-foreground))"
+                            style={{ fontSize: "12px" }}
+                          />
+                          <RechartsTooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--popover))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "8px",
+                            }}
+                          />
+                          <Bar
+                            dataKey="count"
+                            fill="hsl(217 91% 60%)"
+                            radius={[8, 8, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                        <p>No category data available</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Most Purchased Products */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <ShoppingCart className="mr-2 h-5 w-5" />
+                      Most Purchased Products
+                    </CardTitle>
+                    <CardDescription>
+                      Your top products by quantity purchased
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {productsAnalytics?.mostPurchasedProducts &&
+                    productsAnalytics.mostPurchasedProducts.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart
+                          data={productsAnalytics.mostPurchasedProducts.slice(
+                            0,
+                            8
+                          )}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="hsl(var(--border))"
+                          />
+                          <XAxis
+                            dataKey="name"
+                            stroke="hsl(var(--muted-foreground))"
+                            style={{ fontSize: "12px" }}
+                          />
+                          <YAxis
+                            stroke="hsl(var(--muted-foreground))"
+                            style={{ fontSize: "12px" }}
+                          />
+                          <RechartsTooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--popover))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "8px",
+                            }}
+                          />
+                          <Bar dataKey="quantity">
+                            {productsAnalytics.mostPurchasedProducts
+                              .slice(0, 8)
+                              .map((_, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={
+                                    productColors[index % productColors.length]
+                                  }
+                                />
+                              ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                        <p>No product data available</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Add Expense Dialog */}
-      <AddExpenseDialog 
+      <AddExpenseDialog
         open={showAddExpense}
         onOpenChange={setShowAddExpense}
         onAddExpense={handleAddExpense}
       />
-
     </div>
   );
 }

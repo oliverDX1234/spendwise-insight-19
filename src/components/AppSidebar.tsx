@@ -1,5 +1,4 @@
-import { useState } from "react"
-import { Home, Receipt, PieChart, Settings, CreditCard, Target, User, LogOut, AlertCircle, BarChart3, Shield, FileText } from "lucide-react"
+import { Home, Receipt, PieChart,  User, LogOut, AlertCircle, BarChart3, Shield, FileText } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 import { useSubscription } from "@/hooks/useSubscription"
@@ -26,9 +25,7 @@ const items = [
   { title: "Categories", url: "/categories", icon: PieChart },
   { title: "Analytics", url: "/analytics", icon: BarChart3, requiresPremium: true },
   { title: "Reports", url: "/reports", icon: FileText },
-  { title: "Budgets", url: "/budgets", icon: Target },
   { title: "Limits", url: "/limits", icon: AlertCircle },
-  { title: "Settings", url: "/settings", icon: Settings },
 ]
 
 const adminItems = [
@@ -66,7 +63,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 {menuItems.map((item) => {
                   const isDisabled = (item as any).requiresPremium && isTrial && !isAdmin;
-                  
+
                   return (
                     <SidebarMenuItem key={item.title}>
                       {isDisabled ? (
