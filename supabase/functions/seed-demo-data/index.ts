@@ -33,29 +33,38 @@ Deno.serve(async (req) => {
 
     console.log('User found:', user.id);
 
-    // Create 20 categories
-    const categoryNames = [
-      'Groceries', 'Transportation', 'Utilities', 'Entertainment', 'Healthcare',
-      'Dining Out', 'Clothing', 'Electronics', 'Home Improvement', 'Travel',
-      'Education', 'Fitness', 'Insurance', 'Gifts', 'Pet Care',
-      'Books', 'Subscriptions', 'Beauty', 'Sports', 'Hobbies'
-    ];
-
-    const colors = [
-      '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6',
-      '#EC4899', '#14B8A6', '#F97316', '#06B6D4', '#84CC16',
-      '#6366F1', '#A855F7', '#D946EF', '#F43F5E', '#0EA5E9',
-      '#22C55E', '#EAB308', '#6B7280', '#DC2626', '#059669'
+    // Create 20 unique categories (not duplicating predefined ones)
+    const categoryData = [
+      { name: 'Streaming Services', color: '#EF4444' },
+      { name: 'Car Maintenance', color: '#F59E0B' },
+      { name: 'Home Decor', color: '#10B981' },
+      { name: 'Coffee & Tea', color: '#3B82F6' },
+      { name: 'Gaming', color: '#8B5CF6' },
+      { name: 'Photography', color: '#EC4899' },
+      { name: 'Garden & Plants', color: '#14B8A6' },
+      { name: 'Office Supplies', color: '#F97316' },
+      { name: 'Mobile & Internet', color: '#06B6D4' },
+      { name: 'Concert Tickets', color: '#84CC16' },
+      { name: 'Online Courses', color: '#6366F1' },
+      { name: 'Gym & Yoga', color: '#A855F7' },
+      { name: 'Pet Supplies', color: '#D946EF' },
+      { name: 'Hair Salon', color: '#F43F5E' },
+      { name: 'Car Insurance', color: '#0EA5E9' },
+      { name: 'Vitamins & Supplements', color: '#22C55E' },
+      { name: 'Laundry & Cleaning', color: '#EAB308' },
+      { name: 'Music & Audio', color: '#6B7280' },
+      { name: 'Fast Food', color: '#DC2626' },
+      { name: 'Home Security', color: '#059669' }
     ];
 
     console.log('Creating categories...');
     const { data: categories, error: catError } = await supabase
       .from('categories')
       .insert(
-        categoryNames.map((name, index) => ({
+        categoryData.map(cat => ({
           user_id: user.id,
-          name,
-          color: colors[index],
+          name: cat.name,
+          color: cat.color,
           is_predefined: false
         }))
       )
@@ -64,19 +73,39 @@ Deno.serve(async (req) => {
     if (catError) throw catError;
     console.log('Created', categories.length, 'categories');
 
-    // Create products for each category
-    const productTemplates = [
-      'Item A', 'Item B', 'Item C', 'Product X', 'Product Y',
-      'Service A', 'Service B', 'Package A', 'Bundle A', 'Special Item'
-    ];
+    // Create realistic products for each category
+    const categoryProducts: Record<string, string[]> = {
+      'Streaming Services': ['Netflix', 'Spotify', 'Disney+', 'HBO Max', 'YouTube Premium'],
+      'Car Maintenance': ['Oil Change', 'Tire Rotation', 'Brake Pads', 'Car Wash', 'Air Filter'],
+      'Home Decor': ['Wall Art', 'Throw Pillows', 'Curtains', 'Area Rug', 'Table Lamp'],
+      'Coffee & Tea': ['Espresso', 'Latte', 'Green Tea', 'Coffee Beans', 'Tea Bags'],
+      'Gaming': ['Game Pass', 'PlayStation Plus', 'Steam Games', 'Gaming Mouse', 'Headset'],
+      'Photography': ['Camera Lens', 'Memory Card', 'Tripod', 'Photo Editing Software', 'Camera Bag'],
+      'Garden & Plants': ['Potting Soil', 'Seeds', 'Flower Pots', 'Fertilizer', 'Garden Tools'],
+      'Office Supplies': ['Printer Paper', 'Pens', 'Notebooks', 'Stapler', 'Desk Organizer'],
+      'Mobile & Internet': ['Phone Plan', 'Internet Service', 'Phone Case', 'Screen Protector', 'Charging Cable'],
+      'Concert Tickets': ['Rock Concert', 'Jazz Festival', 'Pop Show', 'Classical Music', 'Comedy Show'],
+      'Online Courses': ['Programming Course', 'Language Learning', 'Design Course', 'Business Course', 'Cooking Class'],
+      'Gym & Yoga': ['Gym Membership', 'Yoga Mat', 'Workout Clothes', 'Protein Powder', 'Water Bottle'],
+      'Pet Supplies': ['Pet Food', 'Dog Treats', 'Cat Litter', 'Pet Toys', 'Grooming Service'],
+      'Hair Salon': ['Haircut', 'Hair Coloring', 'Hair Treatment', 'Styling Products', 'Shampoo'],
+      'Car Insurance': ['Monthly Premium', 'Comprehensive Coverage', 'Collision Coverage', 'Liability Insurance', 'Roadside Assistance'],
+      'Vitamins & Supplements': ['Multivitamin', 'Vitamin D', 'Omega-3', 'Protein Powder', 'Probiotics'],
+      'Laundry & Cleaning': ['Detergent', 'Fabric Softener', 'Bleach', 'All-Purpose Cleaner', 'Sponges'],
+      'Music & Audio': ['Headphones', 'Bluetooth Speaker', 'Vinyl Records', 'Guitar Strings', 'Microphone'],
+      'Fast Food': ['Burger Meal', 'Pizza', 'Sandwich', 'Fried Chicken', 'Burrito'],
+      'Home Security': ['Security Camera', 'Smart Lock', 'Alarm System', 'Motion Sensor', 'Video Doorbell']
+    };
+
 
     const productsData = [];
     for (const category of categories) {
-      for (let i = 0; i < 5; i++) {
+      const productList = categoryProducts[category.name] || ['Item 1', 'Item 2', 'Item 3', 'Item 4', 'Item 5'];
+      for (let i = 0; i < productList.length; i++) {
         productsData.push({
           user_id: user.id,
           category_id: category.id,
-          name: `${category.name} - ${productTemplates[i % productTemplates.length]}`,
+          name: productList[i],
           default_price: Math.floor(Math.random() * 100) + 10
         });
       }
