@@ -1,10 +1,21 @@
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { X, Plus } from "lucide-react";
@@ -27,7 +38,11 @@ interface AddExpenseDialogProps {
   onAddExpense: (expense: CreateExpenseData) => Promise<void>;
 }
 
-export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpenseDialogProps) {
+export function AddExpenseDialog({
+  open,
+  onOpenChange,
+  onAddExpense,
+}: AddExpenseDialogProps) {
   const { toast } = useToast();
   const { categories, loading: categoriesLoading } = useCategories();
   const { getProductsByCategory } = useProducts();
@@ -36,7 +51,7 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringInterval, setRecurringInterval] = useState<string>("");
@@ -44,14 +59,21 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
 
   // Product management functions
   const addProduct = () => {
-    setProducts([...products, { name: "", quantity: 1, price_per_unit: 0, isExisting: false }]);
+    setProducts([
+      ...products,
+      { name: "", quantity: 1, price_per_unit: 0, isExisting: false },
+    ]);
   };
 
   const removeProduct = (index: number) => {
     setProducts(products.filter((_, i) => i !== index));
   };
 
-  const updateProduct = (index: number, field: keyof Product, value: string | number | boolean) => {
+  const updateProduct = (
+    index: number,
+    field: keyof Product,
+    value: string | number | boolean
+  ) => {
     const updatedProducts = [...products];
     updatedProducts[index] = { ...updatedProducts[index], [field]: value };
     setProducts(updatedProducts);
@@ -59,39 +81,53 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
 
   const toggleProductType = (index: number, isExisting: boolean) => {
     const updatedProducts = [...products];
-    updatedProducts[index] = { 
-      ...updatedProducts[index], 
+    updatedProducts[index] = {
+      ...updatedProducts[index],
       isExisting,
       name: "",
       price_per_unit: 0,
-      existingProductId: undefined
+      existingProductId: undefined,
     };
     setProducts(updatedProducts);
   };
 
   const selectExistingProduct = (index: number, productId: string) => {
-    const existingProduct = existingProducts.find(p => p.id === productId);
+    const existingProduct = existingProducts.find((p) => p.id === productId);
     if (existingProduct) {
       const updatedProducts = [...products];
       updatedProducts[index] = {
         ...updatedProducts[index],
         name: existingProduct.name,
         price_per_unit: existingProduct.default_price || 0,
-        existingProductId: productId
+        existingProductId: productId,
       };
       setProducts(updatedProducts);
     }
   };
 
   const calculateTotal = () => {
-    return products.reduce((total, product) => total + (product.quantity * product.price_per_unit), 0);
+    return products.reduce(
+      (total, product) => total + product.quantity * product.price_per_unit,
+      0
+    );
   };
+
+  // Auto-calculate amount when products change
+  useEffect(() => {
+    if (products.length > 0) {
+      const total = products.reduce(
+        (sum, product) => sum + product.quantity * product.price_per_unit,
+        0
+      );
+      setAmount(total.toFixed(2));
+    }
+  }, [products]);
 
   const resetForm = () => {
     setAmount("");
     setCategoryId("");
     setDescription("");
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(new Date().toISOString().split("T")[0]);
     setProducts([]);
     setIsRecurring(false);
     setRecurringInterval("");
@@ -99,7 +135,7 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!amount || !categoryId) {
       toast({
         title: "Error",
@@ -128,12 +164,15 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
         expense_date: date,
         is_recurring: isRecurring,
         recurring_interval: isRecurring ? recurringInterval : undefined,
-        products: products.length > 0 ? products.map(p => ({
-          product_id: p.existingProductId,
-          name: p.name,
-          quantity: p.quantity,
-          price_per_unit: p.price_per_unit
-        })) : undefined
+        products:
+          products.length > 0
+            ? products.map((p) => ({
+                product_id: p.existingProductId,
+                name: p.name,
+                quantity: p.quantity,
+                price_per_unit: p.price_per_unit,
+              }))
+            : undefined,
       };
 
       await onAddExpense(expenseData);
@@ -158,7 +197,14 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount *</Label>
+              <Label htmlFor="amount">
+                Amount *
+                {products.length > 0 && (
+                  <span className="text-xs text-muted-foreground ml-2">
+                    (Auto-calculated from products)
+                  </span>
+                )}
+              </Label>
               <Input
                 id="amount"
                 type="number"
@@ -168,12 +214,17 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                 onChange={(e) => setAmount(e.target.value)}
                 disabled={isSubmitting}
                 required
+                className={products.length > 0 ? "bg-muted/50" : ""}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="category">Category *</Label>
-              <Select value={categoryId} onValueChange={setCategoryId} disabled={categoriesLoading || isSubmitting}>
+              <Select
+                value={categoryId}
+                onValueChange={setCategoryId}
+                disabled={categoriesLoading || isSubmitting}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -181,8 +232,8 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                   {categories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
                       <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
+                        <div
+                          className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: cat.color }}
                         />
                         {cat.name}
@@ -219,19 +270,23 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
             {/* Recurring Options */}
             <div className="space-y-4 md:col-span-2">
               <div className="flex items-center space-x-2">
-                <Switch 
-                  id="recurring" 
-                  checked={isRecurring} 
+                <Switch
+                  id="recurring"
+                  checked={isRecurring}
                   onCheckedChange={setIsRecurring}
                   disabled={isSubmitting}
                 />
                 <Label htmlFor="recurring">Make this a recurring expense</Label>
               </div>
-              
+
               {isRecurring && (
                 <div className="space-y-2">
                   <Label htmlFor="interval">Recurring Interval</Label>
-                  <Select value={recurringInterval} onValueChange={setRecurringInterval} disabled={isSubmitting}>
+                  <Select
+                    value={recurringInterval}
+                    onValueChange={setRecurringInterval}
+                    disabled={isSubmitting}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select interval" />
                     </SelectTrigger>
@@ -251,7 +306,13 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Products (Optional)</h4>
-              <Button type="button" variant="outline" size="sm" onClick={addProduct} disabled={isSubmitting}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addProduct}
+                disabled={isSubmitting}
+              >
                 <Plus className="h-4 w-4 mr-1" />
                 Add Product
               </Button>
@@ -290,7 +351,9 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                           <Label>Select Product</Label>
                           <Select
                             value={product.existingProductId || ""}
-                            onValueChange={(value) => selectExistingProduct(index, value)}
+                            onValueChange={(value) =>
+                              selectExistingProduct(index, value)
+                            }
                             disabled={isSubmitting}
                           >
                             <SelectTrigger>
@@ -299,7 +362,8 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                             <SelectContent>
                               {existingProducts.map((p) => (
                                 <SelectItem key={p.id} value={p.id}>
-                                  {p.name} {p.default_price && `($${p.default_price})`}
+                                  {p.name}{" "}
+                                  {p.default_price && `($${p.default_price})`}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -311,7 +375,13 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                             type="number"
                             min="1"
                             value={product.quantity}
-                            onChange={(e) => updateProduct(index, 'quantity', parseInt(e.target.value) || 1)}
+                            onChange={(e) =>
+                              updateProduct(
+                                index,
+                                "quantity",
+                                parseInt(e.target.value) || 1
+                              )
+                            }
                             disabled={isSubmitting}
                           />
                         </div>
@@ -334,7 +404,9 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                           <Input
                             placeholder="Enter product name"
                             value={product.name}
-                            onChange={(e) => updateProduct(index, 'name', e.target.value)}
+                            onChange={(e) =>
+                              updateProduct(index, "name", e.target.value)
+                            }
                             disabled={isSubmitting}
                           />
                         </div>
@@ -344,7 +416,13 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                             type="number"
                             min="1"
                             value={product.quantity}
-                            onChange={(e) => updateProduct(index, 'quantity', parseInt(e.target.value) || 1)}
+                            onChange={(e) =>
+                              updateProduct(
+                                index,
+                                "quantity",
+                                parseInt(e.target.value) || 1
+                              )
+                            }
                             disabled={isSubmitting}
                           />
                         </div>
@@ -353,9 +431,18 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
                           <Input
                             type="number"
                             step="0.01"
+                            min="0"
                             placeholder="0.00"
-                            value={product.price_per_unit}
-                            onChange={(e) => updateProduct(index, "price_per_unit", parseFloat(e.target.value) || 0)}
+                            value={product.price_per_unit || ""}
+                            onChange={(e) =>
+                              updateProduct(
+                                index,
+                                "price_per_unit",
+                                e.target.value === ""
+                                  ? 0
+                                  : parseFloat(e.target.value)
+                              )
+                            }
                             disabled={isSubmitting}
                           />
                         </div>
@@ -385,7 +472,12 @@ export function AddExpenseDialog({ open, onOpenChange, onAddExpense }: AddExpens
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>

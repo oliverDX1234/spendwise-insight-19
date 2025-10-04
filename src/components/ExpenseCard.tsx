@@ -39,8 +39,8 @@ interface ExpenseCardProps {
 export function ExpenseCard({ expense, onEdit, onDelete }: ExpenseCardProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
@@ -61,8 +61,8 @@ export function ExpenseCard({ expense, onEdit, onDelete }: ExpenseCardProps) {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="font-semibold text-lg">${Number(expense.amount).toFixed(2)}</h3>
-              <Badge 
-                variant="secondary" 
+              <Badge
+                variant="secondary"
                 style={expense.category ? getBadgeStyle(expense.category.color) : undefined}
                 className="border"
               >
@@ -75,9 +75,9 @@ export function ExpenseCard({ expense, onEdit, onDelete }: ExpenseCardProps) {
                 </Badge>
               )}
             </div>
-            
+
             <p className="text-muted-foreground mb-3">{expense.description || 'No description'}</p>
-            
+
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
@@ -114,8 +114,7 @@ export function ExpenseCard({ expense, onEdit, onDelete }: ExpenseCardProps) {
               <DropdownMenuItem onClick={() => onEdit?.(expense)}>
                 Edit expense
               </DropdownMenuItem>
-              <DropdownMenuItem>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 className="text-destructive"
                 onClick={() => onDelete?.(expense.id)}
               >

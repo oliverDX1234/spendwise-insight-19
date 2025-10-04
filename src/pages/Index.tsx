@@ -17,9 +17,11 @@ import {
 } from "lucide-react";
 import { ExpenseCard } from "@/components/ExpenseCard";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
+import { EditExpenseDialog } from "@/components/EditExpenseDialog";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { QuickStats } from "@/components/QuickStats";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
-import { useExpenses } from "@/hooks/useExpenses";
+import { useExpenses, Expense, CreateExpenseData } from "@/hooks/useExpenses";
 import { useBudgets } from "@/hooks/useBudgets";
 import { useLimits } from "@/hooks/useLimits";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -59,6 +61,7 @@ export default function Index() {
     expenses,
     loading: expensesLoading,
     createExpense,
+    updateExpense,
     deleteExpense,
   } = useExpenses();
   const { budgets, loading: budgetsLoading } = useBudgets();
@@ -70,6 +73,12 @@ export default function Index() {
     isLoading: subscriptionLoading,
   } = useSubscription();
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [showEditExpense, setShowEditExpense] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(
+    null
+  );
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
 
   // Analytics hooks
@@ -109,7 +118,7 @@ export default function Index() {
     );
   }
 
-  const handleAddExpense = async (expenseData: any) => {
+  const handleAddExpense = async (expenseData: CreateExpenseData) => {
     try {
       await createExpense(expenseData);
     } catch (error) {
@@ -117,11 +126,25 @@ export default function Index() {
     }
   };
 
-  const handleDeleteExpense = async (expenseId: string) => {
-    try {
-      await deleteExpense(expenseId);
-    } catch (error) {
-      // Error is handled in the hook
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setShowEditExpense(true);
+  };
+
+  const handleDeleteExpense = (expenseId: string) => {
+    setDeletingExpenseId(expenseId);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteExpense = async () => {
+    if (deletingExpenseId) {
+      try {
+        await deleteExpense(deletingExpenseId);
+        setShowDeleteDialog(false);
+        setDeletingExpenseId(null);
+      } catch (error) {
+        // Error is handled in the hook
+      }
     }
   };
 
@@ -292,6 +315,7 @@ export default function Index() {
                       <ExpenseCard
                         key={expense.id}
                         expense={expense}
+                        onEdit={handleEditExpense}
                         onDelete={handleDeleteExpense}
                       />
                     ))
@@ -500,6 +524,23 @@ export default function Index() {
         open={showAddExpense}
         onOpenChange={setShowAddExpense}
         onAddExpense={handleAddExpense}
+      />
+
+      {/* Edit Expense Dialog */}
+      <EditExpenseDialog
+        expense={editingExpense}
+        open={showEditExpense}
+        onOpenChange={setShowEditExpense}
+        onUpdateExpense={updateExpense}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Delete Expense"
+        description="Are you sure you want to delete this expense? This action cannot be undone."
+        onConfirm={confirmDeleteExpense}
       />
     </div>
   );

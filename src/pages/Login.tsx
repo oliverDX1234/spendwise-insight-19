@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
+import Logo from "@/components/ui/Logo";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -30,9 +31,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background/90 to-background/80 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-xl">S</span>
-          </div>
+          <Logo className="mx-auto mb-2"/>
           <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
           <CardDescription>
             Sign in to your SpendWise account to continue tracking your expenses
@@ -67,21 +66,21 @@ export default function Login() {
               Sign In
             </Button>
           </form>
-          
+
           <div className="mt-4 text-center">
-            <Link 
-              to="/forgot-password" 
+            <Link
+              to="/forgot-password"
               className="text-sm text-muted-foreground hover:text-primary underline-offset-4 hover:underline"
             >
               Forgot your password?
             </Link>
           </div>
-          
+
           <div className="mt-6 pt-4 border-t text-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Link 
-                to="/register" 
+              <Link
+                to="/register"
                 className="text-primary hover:underline underline-offset-4 font-medium"
               >
                 Sign up
