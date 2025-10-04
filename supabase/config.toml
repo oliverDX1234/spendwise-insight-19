@@ -5,3 +5,12 @@ verify_jwt = true
 
 [functions.generate-monthly-reports]
 verify_jwt = false
+
+[functions.seed-demo-data]
+verify_jwt = false
+
+[functions.generate-current-month-report]
+verify_jwt = true
+
+[functions.process-recurring-expenses]
+verify_jwt = false

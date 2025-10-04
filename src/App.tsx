@@ -16,6 +16,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AdminDashboard from "./pages/AdminDashboard";
+import SeedData from "./pages/SeedData";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -115,6 +116,10 @@ const App = () => (
                 <AdminDashboard />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path="/seed-data"
+            element={<SeedData />}
           />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
