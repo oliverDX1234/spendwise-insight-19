@@ -7,6 +7,8 @@ import {
 } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscGRkZHdwanJ3YXBxZWRjd2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwNDIwOTMsImV4cCI6MjA3MzYxODA5M30.JUT-3XeEpmprpGJnkndF0F7T8WaIt_y_Dslof2meeTA";
 import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType {
@@ -144,12 +146,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           formData.append("user_id", data.user.id);
           formData.append("avatar", avatarFile);
 
-          const { data: uploadData, error: uploadError } = await supabase.functions.invoke(
-            "upload-registration-avatar",
+          const response = await fetch(
+            `https://alpdddwpjrwapqedcwdw.supabase.co/functions/v1/upload-registration-avatar`,
             {
+              method: 'POST',
               body: formData,
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+              },
             }
           );
+          
+          const uploadData = await response.json();
+          const uploadError = !response.ok ? uploadData : null;
 
           if (uploadError) {
             console.error("Avatar upload error:", uploadError);
@@ -177,12 +186,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           formData.append("user_id", data.user.id);
           formData.append("avatar", avatarFile);
 
-          const { data: uploadData, error: uploadError } = await supabase.functions.invoke(
-            "upload-registration-avatar",
+          const response = await fetch(
+            `https://alpdddwpjrwapqedcwdw.supabase.co/functions/v1/upload-registration-avatar`,
             {
+              method: 'POST',
               body: formData,
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+              },
             }
           );
+          
+          const uploadData = await response.json();
+          const uploadError = !response.ok ? uploadData : null;
 
           if (uploadError) {
             console.error("Avatar upload error:", uploadError);
