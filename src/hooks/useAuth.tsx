@@ -104,8 +104,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message,
         variant: "destructive",
       });
-    } else if (data.user && !data.session) {
-      // This means the user already exists but email confirmation is required
+      return { error };
+    }
+    
+    // Check if user already exists (identities array is empty for repeated signups)
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      const duplicateError = { message: "This email is already registered. Please sign in instead." };
+      toast({
+        title: "Email already in use",
+        description: "This email is already registered. Please sign in instead.",
+        variant: "destructive",
+      });
+      return { error: duplicateError };
+    }
+    
+    if (data.user && !data.session) {
+      // Email confirmation is required for new user
       toast({
         title: "Check your email",
         description:
