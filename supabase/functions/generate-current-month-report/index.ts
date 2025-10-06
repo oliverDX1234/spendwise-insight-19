@@ -197,43 +197,109 @@ async function generateExcelReport(expenses: any[], monthYear: string): Promise<
 }
 
 async function generatePDFReport(expenses: any[], monthYear: string): Promise<Uint8Array> {
-  // Create a simple text-based PDF content
-  const totalAmount = expenses.reduce((sum, e) => sum + Number(e.amount), 0)
+  const totalAmount = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
   
   // Calculate category totals
-  const categoryMap = new Map()
+  const categoryMap = new Map();
   expenses.forEach(exp => {
-    const cat = exp.category?.name || 'Uncategorized'
-    categoryMap.set(cat, (categoryMap.get(cat) || 0) + Number(exp.amount))
-  })
+    const cat = exp.category?.name || 'Uncategorized';
+    categoryMap.set(cat, (categoryMap.get(cat) || 0) + Number(exp.amount));
+  });
 
-  // Build PDF content as text
-  let pdfContent = `SPENDWISE MONTHLY REPORT\n${monthYear}\n\n`
-  pdfContent += `SUMMARY\n${'='.repeat(50)}\n`
-  pdfContent += `Total Expenses: ${expenses.length}\n`
-  pdfContent += `Total Amount: $${totalAmount.toFixed(2)}\n\n`
+  // Build PDF content
+  let content = `SPENDWISE MONTHLY REPORT\n${monthYear}\n\n`;
+  content += `SUMMARY\n${'='.repeat(60)}\n`;
+  content += `Total Expenses: ${expenses.length}\n`;
+  content += `Total Amount: $${totalAmount.toFixed(2)}\n\n`;
   
-  pdfContent += `EXPENSES BY CATEGORY\n${'='.repeat(50)}\n`
+  content += `EXPENSES BY CATEGORY\n${'='.repeat(60)}\n`;
   Array.from(categoryMap.entries()).forEach(([cat, amount]) => {
-    const percentage = ((amount / totalAmount) * 100).toFixed(1)
-    pdfContent += `${cat}: $${amount.toFixed(2)} (${percentage}%)\n`
-  })
+    const percentage = ((amount / totalAmount) * 100).toFixed(1);
+    content += `${cat}: $${amount.toFixed(2)} (${percentage}%)\n`;
+  });
   
-  pdfContent += `\nDETAILED EXPENSES\n${'='.repeat(50)}\n`
-  expenses.forEach(exp => {
-    pdfContent += `\nDate: ${new Date(exp.expense_date).toLocaleDateString()}\n`
-    pdfContent += `Category: ${exp.category?.name || 'Uncategorized'}\n`
-    pdfContent += `Amount: $${Number(exp.amount).toFixed(2)}\n`
-    if (exp.description) pdfContent += `Description: ${exp.description}\n`
+  content += `\n\nDETAILED EXPENSES\n${'='.repeat(60)}\n\n`;
+  expenses.forEach((exp, idx) => {
+    content += `${idx + 1}. ${new Date(exp.expense_date).toLocaleDateString()}\n`;
+    content += `   Category: ${exp.category?.name || 'Uncategorized'}\n`;
+    content += `   Amount: $${Number(exp.amount).toFixed(2)}\n`;
+    if (exp.description) content += `   Description: ${exp.description}\n`;
     if (exp.expense_products?.length > 0) {
-      pdfContent += `Products: ${exp.expense_products.map((ep: any) => 
+      content += `   Products: ${exp.expense_products.map((ep: any) => 
         `${ep.product?.name} (${ep.quantity}x $${ep.price_per_unit})`
-      ).join(', ')}\n`
+      ).join(', ')}\n`;
     }
-  })
+    content += '\n';
+  });
 
-  // Convert to PDF using a simple text-to-PDF approach
-  // For a basic implementation, we'll create a simple PDF structure
-  const encoder = new TextEncoder()
-  return encoder.encode(pdfContent)
+  content += `${'='.repeat(60)}\n`;
+  content += `TOTAL: $${totalAmount.toFixed(2)}\n`;
+
+  // Create a proper PDF structure
+  const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/Resources <<
+/Font <<
+/F1 4 0 R
+>>
+>>
+/MediaBox [0 0 612 792]
+/Contents 5 0 R
+>>
+endobj
+4 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Courier
+>>
+endobj
+5 0 obj
+<<
+/Length ${content.length + 50}
+>>
+stream
+BT
+/F1 10 Tf
+50 750 Td
+15 TL
+${content.split('\n').map(line => `(${line.replace(/[()\\]/g, '\\$&')}) Tj T*`).join('\n')}
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000262 00000 n 
+0000000341 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+${500 + content.length}
+%%EOF`;
+
+  const encoder = new TextEncoder();
+  return encoder.encode(pdfContent);
 }
