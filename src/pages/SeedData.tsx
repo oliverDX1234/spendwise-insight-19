@@ -53,7 +53,7 @@ const SeedData = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            userEmail: 'kocovskioliver+1234@gmail.com'
+            userEmail: 'kocovskioliver1234+premium@gmail.com'
           })
         }
       );
@@ -89,8 +89,8 @@ const SeedData = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button 
-            onClick={handleSeedData} 
+          <Button
+            onClick={handleSeedData}
             disabled={isSeeding}
           >
             {isSeeding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -107,8 +107,8 @@ const SeedData = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button 
-            onClick={handleGenerateReports} 
+          <Button
+            onClick={handleGenerateReports}
             disabled={isGeneratingReports}
           >
             {isGeneratingReports && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
