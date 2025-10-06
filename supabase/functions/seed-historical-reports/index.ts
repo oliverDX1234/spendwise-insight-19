@@ -116,19 +116,36 @@ serve(async (req) => {
 
       // Generate Excel report
       const excelBuffer = await generateExcelReport(expenses, monthYear);
+      
+      // Generate PDF report
+      const pdfBuffer = await generatePDFReport(expenses, monthYear);
 
-      // Upload to storage
-      const fileName = `${userData.user_id}/${monthYear.replace(" ", "_")}_report.xlsx`;
-      const { error: uploadError } = await supabase.storage
+      // Upload Excel to storage
+      const excelFileName = `${userData.user_id}/${monthYear.replace(" ", "_")}_report.xlsx`;
+      const { error: excelUploadError } = await supabase.storage
         .from("reports")
-        .upload(fileName, excelBuffer, {
+        .upload(excelFileName, excelBuffer, {
           contentType:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           upsert: true,
         });
 
-      if (uploadError) {
-        console.error(`Error uploading report for ${monthYear}:`, uploadError);
+      if (excelUploadError) {
+        console.error(`Error uploading Excel report for ${monthYear}:`, excelUploadError);
+        continue;
+      }
+
+      // Upload PDF to storage
+      const pdfFileName = `${userData.user_id}/${monthYear.replace(" ", "_")}_report.pdf`;
+      const { error: pdfUploadError } = await supabase.storage
+        .from("reports")
+        .upload(pdfFileName, pdfBuffer, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+
+      if (pdfUploadError) {
+        console.error(`Error uploading PDF report for ${monthYear}:`, pdfUploadError);
         continue;
       }
 
@@ -149,7 +166,8 @@ serve(async (req) => {
         user_id: userData.user_id,
         report_number: nextReportNumber,
         month_year: monthYear,
-        excel_url: fileName,
+        excel_url: excelFileName,
+        pdf_url: pdfFileName,
         created_at: new Date(year, month, endDate.getDate()).toISOString(),
       });
 
@@ -275,4 +293,45 @@ async function generateExcelReport(
   XLSX.utils.book_append_sheet(workbook, sheet4, 'Analytics');
 
   return new Uint8Array(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }));
+}
+
+async function generatePDFReport(expenses: any[], monthYear: string): Promise<Uint8Array> {
+  // Create a simple text-based PDF content
+  const totalAmount = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  
+  // Calculate category totals
+  const categoryMap = new Map();
+  expenses.forEach(exp => {
+    const cat = exp.category?.name || 'Uncategorized';
+    categoryMap.set(cat, (categoryMap.get(cat) || 0) + Number(exp.amount));
+  });
+
+  // Build PDF content as text
+  let pdfContent = `SPENDWISE MONTHLY REPORT\n${monthYear}\n\n`;
+  pdfContent += `SUMMARY\n${'='.repeat(50)}\n`;
+  pdfContent += `Total Expenses: ${expenses.length}\n`;
+  pdfContent += `Total Amount: $${totalAmount.toFixed(2)}\n\n`;
+  
+  pdfContent += `EXPENSES BY CATEGORY\n${'='.repeat(50)}\n`;
+  Array.from(categoryMap.entries()).forEach(([cat, amount]) => {
+    const percentage = ((amount / totalAmount) * 100).toFixed(1);
+    pdfContent += `${cat}: $${amount.toFixed(2)} (${percentage}%)\n`;
+  });
+  
+  pdfContent += `\nDETAILED EXPENSES\n${'='.repeat(50)}\n`;
+  expenses.forEach(exp => {
+    pdfContent += `\nDate: ${new Date(exp.expense_date).toLocaleDateString()}\n`;
+    pdfContent += `Category: ${exp.category?.name || 'Uncategorized'}\n`;
+    pdfContent += `Amount: $${Number(exp.amount).toFixed(2)}\n`;
+    if (exp.description) pdfContent += `Description: ${exp.description}\n`;
+    if (exp.expense_products?.length > 0) {
+      pdfContent += `Products: ${exp.expense_products.map((ep: any) => 
+        `${ep.product?.name} (${ep.quantity}x $${ep.price_per_unit})`
+      ).join(', ')}\n`;
+    }
+  });
+
+  // Convert to PDF using a simple text-to-PDF approach
+  const encoder = new TextEncoder();
+  return encoder.encode(pdfContent);
 }

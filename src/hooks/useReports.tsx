@@ -56,7 +56,7 @@ export function useReports() {
     }
   };
 
-  const generateCurrentMonthReport = async () => {
+  const generateCurrentMonthReport = async (format: "excel" | "pdf") => {
     try {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
@@ -71,6 +71,7 @@ export function useReports() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({ format }),
         }
       );
 
@@ -87,11 +88,12 @@ export function useReports() {
         year: "numeric",
         month: "long",
       });
-      link.download = `SpendWise_Report_${monthYear.replace(" ", "_")}.xlsx`;
+      const extension = format === "excel" ? "xlsx" : "pdf";
+      link.download = `SpendWise_Report_${monthYear.replace(" ", "_")}.${extension}`;
       link.click();
       window.URL.revokeObjectURL(link.href);
 
-      toast.success("Current month report downloaded successfully");
+      toast.success(`Current month report downloaded successfully as ${format.toUpperCase()}`);
     } catch (error: any) {
       console.error("Error generating current month report:", error);
       toast.error("Failed to generate report. Please try again.");

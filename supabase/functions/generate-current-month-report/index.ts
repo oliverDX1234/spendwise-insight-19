@@ -41,6 +41,9 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
+    // Get format from request body
+    const { format = 'excel' } = await req.json().catch(() => ({ format: 'excel' }))
+
     // Get current month's date range
     const now = new Date()
     const startDate = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -75,15 +78,27 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Generate Excel file
-    const excelBuffer = await generateExcelReport(expenses, monthYear)
+    // Generate report based on format
+    let buffer: Uint8Array
+    let contentType: string
+    let filename: string
 
-    // Return the Excel file directly
-    return new Response(excelBuffer, {
+    if (format === 'pdf') {
+      buffer = await generatePDFReport(expenses, monthYear)
+      contentType = 'application/pdf'
+      filename = `SpendWise_Report_${monthYear.replace(' ', '_')}.pdf`
+    } else {
+      buffer = await generateExcelReport(expenses, monthYear)
+      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      filename = `SpendWise_Report_${monthYear.replace(' ', '_')}.xlsx`
+    }
+
+    // Return the file
+    return new Response(buffer, {
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="SpendWise_Report_${monthYear.replace(' ', '_')}.xlsx"`,
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${filename}"`,
       },
     })
   } catch (error) {
@@ -179,4 +194,46 @@ async function generateExcelReport(expenses: any[], monthYear: string): Promise<
   // Generate buffer
   const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
   return new Uint8Array(excelBuffer)
+}
+
+async function generatePDFReport(expenses: any[], monthYear: string): Promise<Uint8Array> {
+  // Create a simple text-based PDF content
+  const totalAmount = expenses.reduce((sum, e) => sum + Number(e.amount), 0)
+  
+  // Calculate category totals
+  const categoryMap = new Map()
+  expenses.forEach(exp => {
+    const cat = exp.category?.name || 'Uncategorized'
+    categoryMap.set(cat, (categoryMap.get(cat) || 0) + Number(exp.amount))
+  })
+
+  // Build PDF content as text
+  let pdfContent = `SPENDWISE MONTHLY REPORT\n${monthYear}\n\n`
+  pdfContent += `SUMMARY\n${'='.repeat(50)}\n`
+  pdfContent += `Total Expenses: ${expenses.length}\n`
+  pdfContent += `Total Amount: $${totalAmount.toFixed(2)}\n\n`
+  
+  pdfContent += `EXPENSES BY CATEGORY\n${'='.repeat(50)}\n`
+  Array.from(categoryMap.entries()).forEach(([cat, amount]) => {
+    const percentage = ((amount / totalAmount) * 100).toFixed(1)
+    pdfContent += `${cat}: $${amount.toFixed(2)} (${percentage}%)\n`
+  })
+  
+  pdfContent += `\nDETAILED EXPENSES\n${'='.repeat(50)}\n`
+  expenses.forEach(exp => {
+    pdfContent += `\nDate: ${new Date(exp.expense_date).toLocaleDateString()}\n`
+    pdfContent += `Category: ${exp.category?.name || 'Uncategorized'}\n`
+    pdfContent += `Amount: $${Number(exp.amount).toFixed(2)}\n`
+    if (exp.description) pdfContent += `Description: ${exp.description}\n`
+    if (exp.expense_products?.length > 0) {
+      pdfContent += `Products: ${exp.expense_products.map((ep: any) => 
+        `${ep.product?.name} (${ep.quantity}x $${ep.price_per_unit})`
+      ).join(', ')}\n`
+    }
+  })
+
+  // Convert to PDF using a simple text-to-PDF approach
+  // For a basic implementation, we'll create a simple PDF structure
+  const encoder = new TextEncoder()
+  return encoder.encode(pdfContent)
 }

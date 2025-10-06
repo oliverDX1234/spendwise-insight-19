@@ -9,18 +9,38 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, FileDown } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { useReports } from "@/hooks/useReports";
 import { format } from "date-fns";
+import { ReportFormatDialog } from "@/components/ReportFormatDialog";
 
 export default function Reports() {
   const { reports, isLoading, downloadFile, generateCurrentMonthReport } = useReports();
   const [isGenerating, setIsGenerating] = React.useState(false);
+  const [formatDialogOpen, setFormatDialogOpen] = React.useState(false);
+  const [selectedReport, setSelectedReport] = React.useState<{
+    type: "current" | "historical";
+    report?: any;
+  } | null>(null);
 
-  const handleGenerateCurrentReport = async () => {
-    setIsGenerating(true);
-    await generateCurrentMonthReport();
-    setIsGenerating(false);
+  const handleSelectFormat = async (format: "excel" | "pdf") => {
+    if (!selectedReport) return;
+
+    if (selectedReport.type === "current") {
+      setIsGenerating(true);
+      await generateCurrentMonthReport(format);
+      setIsGenerating(false);
+    } else if (selectedReport.report) {
+      const url = format === "excel" ? selectedReport.report.excel_url : selectedReport.report.pdf_url;
+      if (url) {
+        const extension = format === "excel" ? "xlsx" : "pdf";
+        await downloadFile(
+          url,
+          `Report_${selectedReport.report.report_number}_${selectedReport.report.month_year}.${extension}`
+        );
+      }
+    }
+    setSelectedReport(null);
   };
 
   if (isLoading) {
@@ -42,14 +62,23 @@ export default function Reports() {
         </div>
       </div>
 
+      <ReportFormatDialog
+        open={formatDialogOpen}
+        onOpenChange={setFormatDialogOpen}
+        onSelectFormat={handleSelectFormat}
+      />
+
       <Card className="p-6">
         <div className="mb-4 flex justify-end">
           <Button
-            onClick={handleGenerateCurrentReport}
+            onClick={() => {
+              setSelectedReport({ type: "current" });
+              setFormatDialogOpen(true);
+            }}
             disabled={isGenerating}
             size="lg"
           >
-            <FileDown className="h-4 w-4 mr-2" />
+            <Download className="h-4 w-4 mr-2" />
             {isGenerating ? "Generating..." : "Download Current Month Report"}
           </Button>
         </div>
@@ -83,38 +112,17 @@ export default function Reports() {
                     {format(new Date(report.created_at), "PPP")}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {report.excel_url && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            downloadFile(
-                              report.excel_url!,
-                              `Report_${report.report_number}_${report.month_year}.xlsx`
-                            )
-                          }
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Excel
-                        </Button>
-                      )}
-                      {report.pdf_url && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            downloadFile(
-                              report.pdf_url!,
-                              `Report_${report.report_number}_${report.month_year}.pdf`
-                            )
-                          }
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          PDF
-                        </Button>
-                      )}
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedReport({ type: "historical", report });
+                        setFormatDialogOpen(true);
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
