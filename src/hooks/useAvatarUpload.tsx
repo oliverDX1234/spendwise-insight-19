@@ -36,12 +36,13 @@ export function useAvatarUpload() {
         throw uploadError;
       }
 
-      // Get public URL
+      // Get public URL with timestamp for cache busting
       const { data: { publicUrl } } = supabase.storage
         .from("avatars")
         .getPublicUrl(fileName);
 
-      return publicUrl;
+      // Add timestamp to force browser to reload the image
+      return `${publicUrl}?t=${Date.now()}`;
     } finally {
       setUploading(false);
     }

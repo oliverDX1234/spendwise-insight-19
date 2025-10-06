@@ -140,6 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const fileExt = avatarFile.name.split(".").pop();
           const fileName = `${data.user.id}/avatar.${fileExt}`;
 
+          console.log("Uploading avatar during registration:", fileName);
+
           const { error: uploadError } = await supabase.storage
             .from("avatars")
             .upload(fileName, avatarFile, {
@@ -147,41 +149,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               upsert: true,
             });
 
-          if (!uploadError) {
-            // Get public URL and update user profile
-            const {
-              data: { publicUrl },
-            } = supabase.storage.from("avatars").getPublicUrl(fileName);
+          if (uploadError) {
+            console.error("Avatar upload error:", uploadError);
+            throw uploadError;
+          }
 
-            // Wait for user record to be created by trigger (retry with backoff)
-            let retries = 0;
-            const maxRetries = 5;
-            let userRecordExists = false;
+          // Get public URL
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
-            while (retries < maxRetries && !userRecordExists) {
-              const { data: userRecord } = await supabase
-                .from("users")
-                .select("user_id")
-                .eq("user_id", data.user.id)
-                .single();
+          console.log("Avatar public URL:", publicUrl);
 
-              if (userRecord) {
-                userRecordExists = true;
-              } else {
-                retries++;
-                await new Promise((resolve) =>
-                  setTimeout(resolve, 200 * retries)
-                ); // Exponential backoff
-              }
+          // Wait for user record to be created by trigger (retry with backoff)
+          let retries = 0;
+          const maxRetries = 5;
+          let userRecordExists = false;
+
+          while (retries < maxRetries && !userRecordExists) {
+            const { data: userRecord } = await supabase
+              .from("users")
+              .select("user_id")
+              .eq("user_id", data.user.id)
+              .single();
+
+            if (userRecord) {
+              userRecordExists = true;
+            } else {
+              retries++;
+              await new Promise((resolve) =>
+                setTimeout(resolve, 200 * retries)
+              ); // Exponential backoff
             }
+          }
 
-            if (userRecordExists) {
-              // Update the user profile with avatar URL
-              await supabase
-                .from("users")
-                .update({ avatar_url: publicUrl })
-                .eq("user_id", data.user.id);
+          if (userRecordExists) {
+            // Update the user profile with avatar URL - add timestamp for cache busting
+            const avatarUrlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
+            const { error: updateError } = await supabase
+              .from("users")
+              .update({ avatar_url: avatarUrlWithTimestamp })
+              .eq("user_id", data.user.id);
+
+            if (updateError) {
+              console.error("Failed to update avatar URL:", updateError);
+            } else {
+              console.log("Avatar URL saved to profile:", avatarUrlWithTimestamp);
             }
+          } else {
+            console.error("User record not created after retries");
           }
         } catch (avatarError) {
           console.error("Avatar upload failed:", avatarError);
@@ -200,6 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const fileExt = avatarFile.name.split(".").pop();
           const fileName = `${data.user.id}/avatar.${fileExt}`;
 
+          console.log("Uploading avatar during registration (email confirm):", fileName);
+
           const { error: uploadError } = await supabase.storage
             .from("avatars")
             .upload(fileName, avatarFile, {
@@ -207,41 +225,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               upsert: true,
             });
 
-          if (!uploadError) {
-            // Get public URL and update user profile
-            const {
-              data: { publicUrl },
-            } = supabase.storage.from("avatars").getPublicUrl(fileName);
+          if (uploadError) {
+            console.error("Avatar upload error:", uploadError);
+            throw uploadError;
+          }
 
-            // Wait for user record to be created by trigger (retry with backoff)
-            let retries = 0;
-            const maxRetries = 5;
-            let userRecordExists = false;
+          // Get public URL
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
-            while (retries < maxRetries && !userRecordExists) {
-              const { data: userRecord } = await supabase
-                .from("users")
-                .select("user_id")
-                .eq("user_id", data.user.id)
-                .single();
+          console.log("Avatar public URL:", publicUrl);
 
-              if (userRecord) {
-                userRecordExists = true;
-              } else {
-                retries++;
-                await new Promise((resolve) =>
-                  setTimeout(resolve, 200 * retries)
-                ); // Exponential backoff
-              }
+          // Wait for user record to be created by trigger (retry with backoff)
+          let retries = 0;
+          const maxRetries = 5;
+          let userRecordExists = false;
+
+          while (retries < maxRetries && !userRecordExists) {
+            const { data: userRecord } = await supabase
+              .from("users")
+              .select("user_id")
+              .eq("user_id", data.user.id)
+              .single();
+
+            if (userRecord) {
+              userRecordExists = true;
+            } else {
+              retries++;
+              await new Promise((resolve) =>
+                setTimeout(resolve, 200 * retries)
+              ); // Exponential backoff
             }
+          }
 
-            if (userRecordExists) {
-              // Update the user profile with avatar URL
-              await supabase
-                .from("users")
-                .update({ avatar_url: publicUrl })
-                .eq("user_id", data.user.id);
+          if (userRecordExists) {
+            // Update the user profile with avatar URL - add timestamp for cache busting
+            const avatarUrlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
+            const { error: updateError } = await supabase
+              .from("users")
+              .update({ avatar_url: avatarUrlWithTimestamp })
+              .eq("user_id", data.user.id);
+
+            if (updateError) {
+              console.error("Failed to update avatar URL:", updateError);
+            } else {
+              console.log("Avatar URL saved to profile:", avatarUrlWithTimestamp);
             }
+          } else {
+            console.error("User record not created after retries");
           }
         } catch (avatarError) {
           console.error("Avatar upload failed:", avatarError);
