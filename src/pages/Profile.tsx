@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,16 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, CreditCard, Upload, Trash2, Check, Calendar, TrendingUp } from "lucide-react";
+import {
+  User,
+  Lock,
+  CreditCard,
+  Upload,
+  Trash2,
+  Check,
+  Calendar,
+  TrendingUp,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCards, maskCardNumber } from "@/hooks/useCards";
 import { useAvatarUpload, validateImageFile } from "@/hooks/useAvatarUpload";
@@ -37,12 +47,18 @@ interface UserProfile {
 }
 
 export default function Profile() {
+  const location = useLocation();
   const { user, updatePassword } = useAuth();
   const { cards, deleteCard } = useCards();
   const { updateProfileAvatar, uploading } = useAvatarUpload();
   const { subscription, isPremium, isTrial } = useSubscription();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Tab state - check if navigation state has a tab value
+  const [activeTab, setActiveTab] = useState<string>(
+    (location.state as any)?.tab || "personal"
+  );
 
   // Personal info state
   const [fullName, setFullName] = useState("");
@@ -119,16 +135,17 @@ export default function Profile() {
 
   // Plan change mutations
   const changePlan = useMutation({
-    mutationFn: async (plan: 'trial' | 'premium') => {
+    mutationFn: async (plan: "trial" | "premium") => {
       if (!user?.id) throw new Error("User not authenticated");
 
       const { data, error } = await supabase
         .from("users")
         .update({
           subscription_plan: plan,
-          subscription_expires_at: plan === 'premium' 
-            ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          subscription_expires_at:
+            plan === "premium"
+              ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         })
         .eq("user_id", user.id)
         .select()
@@ -141,10 +158,12 @@ export default function Profile() {
       queryClient.invalidateQueries({ queryKey: ["subscription", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       toast({
-        title: plan === 'premium' ? "Upgraded to Premium!" : "Downgraded to Trial",
-        description: plan === 'premium' 
-          ? "You now have unlimited access to all features."
-          : "You're now on the trial plan with limited features.",
+        title:
+          plan === "premium" ? "Upgraded to Premium!" : "Downgraded to Trial",
+        description:
+          plan === "premium"
+            ? "You now have unlimited access to all features."
+            : "You're now on the trial plan with limited features.",
       });
       setIsUpgrading(false);
     },
@@ -271,12 +290,12 @@ export default function Profile() {
       return;
     }
     setIsUpgrading(true);
-    changePlan.mutate('premium');
+    changePlan.mutate("premium");
   };
 
   const handlePlanDowngrade = () => {
     setIsUpgrading(true);
-    changePlan.mutate('trial');
+    changePlan.mutate("trial");
   };
 
   return (
@@ -288,7 +307,11 @@ export default function Profile() {
         </p>
       </div>
 
-      <Tabs defaultValue="personal" className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="personal" className="flex items-center gap-2">
             <User className="h-4 w-4" />
@@ -533,7 +556,11 @@ export default function Profile() {
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
-                <Card className={`relative cursor-pointer hover:ring-2 hover:ring-primary transition-all ${isTrial ? 'ring-2 ring-primary' : ''}`}>
+                <Card
+                  className={`relative cursor-pointer hover:ring-2 hover:ring-primary transition-all ${
+                    isTrial ? "ring-2 ring-primary" : ""
+                  }`}
+                >
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
@@ -543,7 +570,9 @@ export default function Profile() {
                       </CardTitle>
                       <Badge variant="secondary">Free</Badge>
                     </div>
-                    <CardDescription>Perfect for getting started</CardDescription>
+                    <CardDescription>
+                      Perfect for getting started
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -553,7 +582,9 @@ export default function Profile() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-500" />
-                        <span className="text-sm">Up to 3 custom categories</span>
+                        <span className="text-sm">
+                          Up to 3 custom categories
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-500" />
@@ -565,8 +596,8 @@ export default function Profile() {
                       </div>
                     </div>
                     {isPremium && (
-                      <Button 
-                        className="w-full" 
+                      <Button
+                        className="w-full"
                         variant="outline"
                         onClick={handlePlanDowngrade}
                         disabled={isUpgrading}
@@ -577,7 +608,11 @@ export default function Profile() {
                   </CardContent>
                 </Card>
 
-                <Card className={`relative cursor-pointer hover:ring-2 hover:ring-primary transition-all border-primary ${isPremium ? 'ring-2 ring-primary' : ''}`}>
+                <Card
+                  className={`relative cursor-pointer hover:ring-2 hover:ring-primary transition-all border-primary ${
+                    isPremium ? "ring-2 ring-primary" : ""
+                  }`}
+                >
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
@@ -587,17 +622,23 @@ export default function Profile() {
                       </CardTitle>
                       <Badge>Best Value</Badge>
                     </div>
-                    <CardDescription>Full access to all features</CardDescription>
+                    <CardDescription>
+                      Full access to all features
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-500" />
-                        <span className="text-sm">Full analytics dashboard</span>
+                        <span className="text-sm">
+                          Full analytics dashboard
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-500" />
-                        <span className="text-sm">Unlimited custom categories</span>
+                        <span className="text-sm">
+                          Unlimited custom categories
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-500" />
@@ -609,8 +650,8 @@ export default function Profile() {
                       </div>
                     </div>
                     {isTrial && (
-                      <Button 
-                        className="w-full" 
+                      <Button
+                        className="w-full"
                         onClick={handlePlanUpgrade}
                         disabled={isUpgrading}
                       >
@@ -623,13 +664,18 @@ export default function Profile() {
 
               {subscription && (
                 <div className="mt-6 p-4 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-2">Current Subscription Details</h4>
+                  <h4 className="font-medium mb-2">
+                    Current Subscription Details
+                  </h4>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p>Plan: {subscription.subscription_plan || 'Trial'}</p>
+                    <p>Plan: {subscription.subscription_plan || "Trial"}</p>
                     <p>
-                      Expires: {subscription.subscription_expires_at 
-                        ? new Date(subscription.subscription_expires_at).toLocaleDateString()
-                        : 'N/A'}
+                      Expires:{" "}
+                      {subscription.subscription_expires_at
+                        ? new Date(
+                            subscription.subscription_expires_at
+                          ).toLocaleDateString()
+                        : "N/A"}
                     </p>
                   </div>
                 </div>

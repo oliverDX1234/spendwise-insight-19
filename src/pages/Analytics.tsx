@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -47,6 +48,7 @@ import {
 } from "lucide-react";
 
 export default function Analytics() {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState<"week" | "month" | "year">("month");
   const { isTrial } = useSubscription();
   const { data: expensesData, isLoading: expensesLoading } =
@@ -122,7 +124,11 @@ export default function Analytics() {
               Upgrade your plan to access detailed analytics and insights about
               your expenses.
             </p>
-            <Button>Upgrade Plan</Button>
+            <Button
+              onClick={() => navigate("/profile", { state: { tab: "plan" } })}
+            >
+              Upgrade Plan
+            </Button>
           </div>
         </div>
       </div>
@@ -138,7 +144,10 @@ export default function Analytics() {
             Get insights into your spending patterns and financial habits.
           </p>
         </div>
-        <Select value={period} onValueChange={(value: "week" | "month" | "year") => setPeriod(value)}>
+        <Select
+          value={period}
+          onValueChange={(value: "week" | "month" | "year") => setPeriod(value)}
+        >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Select time period" />
           </SelectTrigger>
@@ -183,7 +192,12 @@ export default function Analytics() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Daily Expenses This {period === "week" ? "Week" : period === "month" ? "Month" : "Year"}
+                  Daily Expenses This{" "}
+                  {period === "week"
+                    ? "Week"
+                    : period === "month"
+                    ? "Month"
+                    : "Year"}
                 </CardTitle>
                 <CardDescription>
                   Track your spending patterns throughout the {period}
@@ -445,14 +459,21 @@ export default function Analytics() {
               <CardHeader>
                 <CardTitle>Current Period vs All-Time Spending</CardTitle>
                 <CardDescription>
-                  Compare this {period}'s spending with all-time totals by category
+                  Compare this {period}'s spending with all-time totals by
+                  category
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ChartContainer
                   config={{
                     period: {
-                      label: `This ${period === "week" ? "Week" : period === "month" ? "Month" : "Year"}`,
+                      label: `This ${
+                        period === "week"
+                          ? "Week"
+                          : period === "month"
+                          ? "Month"
+                          : "Year"
+                      }`,
                       color: "#8B5CF6",
                     },
                     allTime: {
@@ -639,7 +660,13 @@ export default function Analytics() {
                 <ChartContainer
                   config={{
                     period: {
-                      label: `This ${period === "week" ? "Week" : period === "month" ? "Month" : "Year"}`,
+                      label: `This ${
+                        period === "week"
+                          ? "Week"
+                          : period === "month"
+                          ? "Month"
+                          : "Year"
+                      }`,
                       color: "#8B5CF6",
                     },
                     allTime: {
