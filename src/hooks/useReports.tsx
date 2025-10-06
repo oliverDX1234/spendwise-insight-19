@@ -17,7 +17,11 @@ export function useReports() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: reports = [], isLoading, error } = useQuery({
+  const {
+    data: reports = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["reports", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -36,13 +40,20 @@ export function useReports() {
 
   const downloadFile = async (url: string, filename: string) => {
     try {
-      const { data, error } = await supabase.storage
+      // Get a signed URL for the file
+      const { data: signedUrlData, error: urlError } = await supabase.storage
         .from("reports")
-        .download(url);
+        .createSignedUrl(url, 60); // 60 seconds expiry
 
-      if (error) throw error;
+      if (urlError || !signedUrlData) {
+        throw urlError || new Error("Failed to get download URL");
+      }
 
-      const blob = new Blob([data]);
+      // Download using fetch to get the raw file
+      const response = await fetch(signedUrlData.signedUrl);
+      if (!response.ok) throw new Error("Download failed");
+
+      const blob = await response.blob();
       const link = document.createElement("a");
       link.href = window.URL.createObjectURL(blob);
       link.download = filename;
@@ -50,7 +61,7 @@ export function useReports() {
       window.URL.revokeObjectURL(link.href);
 
       toast.success("Report downloaded successfully");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error downloading report:", error);
       toast.error("Failed to download report");
     }
@@ -89,12 +100,17 @@ export function useReports() {
         month: "long",
       });
       const extension = format === "excel" ? "xlsx" : "pdf";
-      link.download = `SpendWise_Report_${monthYear.replace(" ", "_")}.${extension}`;
+      link.download = `SpendWise_Report_${monthYear.replace(
+        " ",
+        "_"
+      )}.${extension}`;
       link.click();
       window.URL.revokeObjectURL(link.href);
 
-      toast.success(`Current month report downloaded successfully as ${format.toUpperCase()}`);
-    } catch (error: any) {
+      toast.success(
+        `Current month report downloaded successfully as ${format.toUpperCase()}`
+      );
+    } catch (error) {
       console.error("Error generating current month report:", error);
       toast.error("Failed to generate report. Please try again.");
     }
