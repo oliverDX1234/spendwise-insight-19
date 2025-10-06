@@ -134,70 +134,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } else if (data.user && data.session) {
       // New user was created and auto-confirmed
-      // If there's an avatar file, upload it
+      // If there's an avatar file, upload it using edge function with service role
       if (avatarFile) {
         try {
-          const fileExt = avatarFile.name.split(".").pop();
-          const fileName = `${data.user.id}/avatar.${fileExt}`;
+          console.log("Uploading avatar during registration via edge function");
 
-          console.log("Uploading avatar during registration:", fileName);
+          // Create FormData to send file
+          const formData = new FormData();
+          formData.append("user_id", data.user.id);
+          formData.append("avatar", avatarFile);
 
-          const { error: uploadError } = await supabase.storage
-            .from("avatars")
-            .upload(fileName, avatarFile, {
-              cacheControl: "3600",
-              upsert: true,
-            });
+          const { data: uploadData, error: uploadError } = await supabase.functions.invoke(
+            "upload-registration-avatar",
+            {
+              body: formData,
+            }
+          );
 
           if (uploadError) {
             console.error("Avatar upload error:", uploadError);
-            throw uploadError;
-          }
-
-          // Get public URL
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("avatars").getPublicUrl(fileName);
-
-          console.log("Avatar public URL:", publicUrl);
-
-          // Wait for user record to be created by trigger (retry with backoff)
-          let retries = 0;
-          const maxRetries = 5;
-          let userRecordExists = false;
-
-          while (retries < maxRetries && !userRecordExists) {
-            const { data: userRecord } = await supabase
-              .from("users")
-              .select("user_id")
-              .eq("user_id", data.user.id)
-              .single();
-
-            if (userRecord) {
-              userRecordExists = true;
-            } else {
-              retries++;
-              await new Promise((resolve) =>
-                setTimeout(resolve, 200 * retries)
-              ); // Exponential backoff
-            }
-          }
-
-          if (userRecordExists) {
-            // Update the user profile with avatar URL - add timestamp for cache busting
-            const avatarUrlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
-            const { error: updateError } = await supabase
-              .from("users")
-              .update({ avatar_url: avatarUrlWithTimestamp })
-              .eq("user_id", data.user.id);
-
-            if (updateError) {
-              console.error("Failed to update avatar URL:", updateError);
-            } else {
-              console.log("Avatar URL saved to profile:", avatarUrlWithTimestamp);
-            }
           } else {
-            console.error("User record not created after retries");
+            console.log("Avatar uploaded successfully:", uploadData);
           }
         } catch (avatarError) {
           console.error("Avatar upload failed:", avatarError);
@@ -210,70 +167,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } else {
       // Default case - send confirmation email
-      // If there's an avatar file, try to upload it after user confirms
+      // If there's an avatar file, try to upload it using edge function
       if (avatarFile && data.user) {
         try {
-          const fileExt = avatarFile.name.split(".").pop();
-          const fileName = `${data.user.id}/avatar.${fileExt}`;
+          console.log("Uploading avatar during registration via edge function (email confirm flow)");
 
-          console.log("Uploading avatar during registration (email confirm):", fileName);
+          // Create FormData to send file
+          const formData = new FormData();
+          formData.append("user_id", data.user.id);
+          formData.append("avatar", avatarFile);
 
-          const { error: uploadError } = await supabase.storage
-            .from("avatars")
-            .upload(fileName, avatarFile, {
-              cacheControl: "3600",
-              upsert: true,
-            });
+          const { data: uploadData, error: uploadError } = await supabase.functions.invoke(
+            "upload-registration-avatar",
+            {
+              body: formData,
+            }
+          );
 
           if (uploadError) {
             console.error("Avatar upload error:", uploadError);
-            throw uploadError;
-          }
-
-          // Get public URL
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("avatars").getPublicUrl(fileName);
-
-          console.log("Avatar public URL:", publicUrl);
-
-          // Wait for user record to be created by trigger (retry with backoff)
-          let retries = 0;
-          const maxRetries = 5;
-          let userRecordExists = false;
-
-          while (retries < maxRetries && !userRecordExists) {
-            const { data: userRecord } = await supabase
-              .from("users")
-              .select("user_id")
-              .eq("user_id", data.user.id)
-              .single();
-
-            if (userRecord) {
-              userRecordExists = true;
-            } else {
-              retries++;
-              await new Promise((resolve) =>
-                setTimeout(resolve, 200 * retries)
-              ); // Exponential backoff
-            }
-          }
-
-          if (userRecordExists) {
-            // Update the user profile with avatar URL - add timestamp for cache busting
-            const avatarUrlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
-            const { error: updateError } = await supabase
-              .from("users")
-              .update({ avatar_url: avatarUrlWithTimestamp })
-              .eq("user_id", data.user.id);
-
-            if (updateError) {
-              console.error("Failed to update avatar URL:", updateError);
-            } else {
-              console.log("Avatar URL saved to profile:", avatarUrlWithTimestamp);
-            }
           } else {
-            console.error("User record not created after retries");
+            console.log("Avatar uploaded successfully:", uploadData);
           }
         } catch (avatarError) {
           console.error("Avatar upload failed:", avatarError);
