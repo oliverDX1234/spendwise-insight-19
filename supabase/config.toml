@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.seed-demo-data]
 verify_jwt = false
 
+[functions.seed-historical-reports]
+verify_jwt = false
+
 [functions.generate-current-month-report]
 verify_jwt = true
 
