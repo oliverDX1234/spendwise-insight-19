@@ -196,81 +196,83 @@ async function generateExcelReport(
 ): Promise<Uint8Array> {
   const workbook = XLSX.utils.book_new();
 
-  // Sheet 1: Expenses
-  const expensesData = expenses.map((expense) => ({
-    Date: new Date(expense.expense_date).toLocaleDateString(),
-    Category: expense.category?.name || "Unknown",
-    Description: expense.description || "",
-    Amount: parseFloat(expense.amount),
-    Products: expense.expense_products
-      ?.map((ep: any) => `${ep.product?.name} (${ep.quantity}x)`)
-      .join(", ") || "",
+  // Sheet 1: Expenses Summary
+  const expenseRows = expenses.map(exp => ({
+    Date: new Date(exp.expense_date).toLocaleDateString(),
+    Description: exp.description || '-',
+    Category: exp.category?.name || 'Uncategorized',
+    Products: exp.expense_products?.map((ep: any) => 
+      `${ep.product?.name} (${ep.quantity}x $${ep.price_per_unit})`
+    ).join(', ') || '-',
+    Amount: `$${Number(exp.amount).toFixed(2)}`,
   }));
-  const expensesSheet = XLSX.utils.json_to_sheet(expensesData);
-  XLSX.utils.book_append_sheet(workbook, expensesSheet, "Expenses");
+
+  const totalAmount = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  expenseRows.push({
+    Date: '',
+    Description: '',
+    Category: '',
+    Products: 'TOTAL',
+    Amount: `$${totalAmount.toFixed(2)}`,
+  });
+
+  const sheet1 = XLSX.utils.json_to_sheet(expenseRows);
+  XLSX.utils.book_append_sheet(workbook, sheet1, 'Expenses');
 
   // Sheet 2: By Category
-  const categoryTotals = expenses.reduce((acc: any, expense) => {
-    const categoryName = expense.category?.name || "Unknown";
-    acc[categoryName] = (acc[categoryName] || 0) + parseFloat(expense.amount);
-    return acc;
-  }, {});
+  const categoryMap = new Map();
+  expenses.forEach(exp => {
+    const cat = exp.category?.name || 'Uncategorized';
+    categoryMap.set(cat, (categoryMap.get(cat) || 0) + Number(exp.amount));
+  });
 
-  const categoryData = Object.entries(categoryTotals).map(
-    ([category, total]) => ({
-      Category: category,
-      Total: total,
-    })
-  );
-  const categorySheet = XLSX.utils.json_to_sheet(categoryData);
-  XLSX.utils.book_append_sheet(workbook, categorySheet, "By Category");
+  const categoryRows = Array.from(categoryMap.entries()).map(([cat, amount]) => ({
+    Category: cat,
+    'Total Spent': `$${amount.toFixed(2)}`,
+    Percentage: `${((amount / totalAmount) * 100).toFixed(1)}%`,
+  }));
+
+  const sheet2 = XLSX.utils.json_to_sheet(categoryRows);
+  XLSX.utils.book_append_sheet(workbook, sheet2, 'By Category');
 
   // Sheet 3: By Products
-  const productTotals: any = {};
-  expenses.forEach((expense) => {
-    expense.expense_products?.forEach((ep: any) => {
-      const productName = ep.product?.name || "Unknown";
-      if (!productTotals[productName]) {
-        productTotals[productName] = { quantity: 0, total: 0 };
-      }
-      productTotals[productName].quantity += ep.quantity;
-      productTotals[productName].total +=
-        ep.quantity * parseFloat(ep.price_per_unit);
+  const productMap = new Map();
+  expenses.forEach(exp => {
+    exp.expense_products?.forEach((ep: any) => {
+      const name = ep.product?.name || 'Unknown';
+      const current = productMap.get(name) || { quantity: 0, total: 0 };
+      productMap.set(name, {
+        quantity: current.quantity + ep.quantity,
+        total: current.total + (ep.quantity * Number(ep.price_per_unit)),
+      });
     });
   });
 
-  const productData = Object.entries(productTotals).map(
-    ([product, data]: [string, any]) => ({
-      Product: product,
-      Quantity: data.quantity,
-      Total: data.total,
-    })
-  );
-  const productSheet = XLSX.utils.json_to_sheet(productData);
-  XLSX.utils.book_append_sheet(workbook, productSheet, "By Products");
+  const productRows = Array.from(productMap.entries()).map(([name, data]) => ({
+    Product: name,
+    'Total Quantity': data.quantity,
+    'Total Spent': `$${data.total.toFixed(2)}`,
+  }));
+
+  const sheet3 = XLSX.utils.json_to_sheet(productRows);
+  XLSX.utils.book_append_sheet(workbook, sheet3, 'By Products');
 
   // Sheet 4: Analytics
-  const totalSpent = expenses.reduce(
-    (sum, expense) => sum + parseFloat(expense.amount),
-    0
-  );
-  const averageExpense = totalSpent / expenses.length;
-  const topCategory = Object.entries(categoryTotals).sort(
-    ([, a]: any, [, b]: any) => b - a
-  )[0];
+  const recurringCount = expenses.filter(e => e.is_recurring).length;
+  const oneTimeCount = expenses.length - recurringCount;
 
-  const analyticsData = [
-    { Metric: "Total Expenses", Value: expenses.length },
-    { Metric: "Total Amount Spent", Value: totalSpent.toFixed(2) },
-    { Metric: "Average Expense", Value: averageExpense.toFixed(2) },
-    {
-      Metric: "Top Category",
-      Value: topCategory ? `${topCategory[0]} ($${topCategory[1]})` : "N/A",
-    },
-    { Metric: "Report Period", Value: monthYear },
+  const analyticsRows = [
+    { Metric: 'Total Expenses', Value: expenses.length },
+    { Metric: 'Total Amount', Value: `$${totalAmount.toFixed(2)}` },
+    { Metric: 'Recurring Expenses', Value: recurringCount },
+    { Metric: 'One-Time Expenses', Value: oneTimeCount },
+    { Metric: 'Average per Expense', Value: `$${(totalAmount / expenses.length).toFixed(2)}` },
+    { Metric: 'Categories Used', Value: categoryMap.size },
+    { Metric: 'Products Purchased', Value: productMap.size },
   ];
-  const analyticsSheet = XLSX.utils.json_to_sheet(analyticsData);
-  XLSX.utils.book_append_sheet(workbook, analyticsSheet, "Analytics");
+
+  const sheet4 = XLSX.utils.json_to_sheet(analyticsRows);
+  XLSX.utils.book_append_sheet(workbook, sheet4, 'Analytics');
 
   return new Uint8Array(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }));
 }

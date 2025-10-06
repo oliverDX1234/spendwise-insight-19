@@ -82,37 +82,39 @@ export default function Reports() {
                   <TableCell>
                     {format(new Date(report.created_at), "PPP")}
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    {report.excel_url && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          downloadFile(
-                            report.excel_url!,
-                            `Report_${report.report_number}_${report.month_year}.xlsx`
-                          )
-                        }
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Excel
-                      </Button>
-                    )}
-                    {report.pdf_url && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          downloadFile(
-                            report.pdf_url!,
-                            `Report_${report.report_number}_${report.month_year}.pdf`
-                          )
-                        }
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        PDF
-                      </Button>
-                    )}
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {report.excel_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            downloadFile(
+                              report.excel_url!,
+                              `Report_${report.report_number}_${report.month_year}.xlsx`
+                            )
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Excel
+                        </Button>
+                      )}
+                      {report.pdf_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            downloadFile(
+                              report.pdf_url!,
+                              `Report_${report.report_number}_${report.month_year}.pdf`
+                            )
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          PDF
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
