@@ -39,23 +39,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state change:", event, session?.user?.id);
-      
+
       // Handle token refresh failures and expired sessions
-      if (event === 'TOKEN_REFRESHED' && !session) {
+      if (event === "TOKEN_REFRESHED" && !session) {
         console.log("Token refresh failed, clearing auth state");
         setSession(null);
         setUser(null);
         setLoading(false);
         return;
       }
-      
-      if (event === 'SIGNED_OUT' || !session) {
+
+      if (event === "SIGNED_OUT" || !session) {
         setSession(null);
         setUser(null);
         setLoading(false);
         return;
       }
-      
+
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -106,18 +106,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return { error };
     }
-    
+
     // Check if user already exists (identities array is empty for repeated signups)
-    if (data.user && data.user.identities && data.user.identities.length === 0) {
-      const duplicateError = { message: "This email is already registered. Please sign in instead." };
+    if (
+      data.user &&
+      data.user.identities &&
+      data.user.identities.length === 0
+    ) {
+      const duplicateError = {
+        message: "This email is already registered. Please sign in instead.",
+      };
       toast({
         title: "Email already in use",
-        description: "This email is already registered. Please sign in instead.",
+        description:
+          "This email is already registered. Please sign in instead.",
         variant: "destructive",
       });
       return { error: duplicateError };
     }
-    
+
     if (data.user && !data.session) {
       // Email confirmation is required for new user
       toast({
@@ -146,11 +153,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               data: { publicUrl },
             } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
-            // Update the user profile with avatar URL
-            await supabase
-              .from("users")
-              .update({ avatar_url: publicUrl })
-              .eq("user_id", data.user.id);
+            // Wait for user record to be created by trigger (retry with backoff)
+            let retries = 0;
+            const maxRetries = 5;
+            let userRecordExists = false;
+
+            while (retries < maxRetries && !userRecordExists) {
+              const { data: userRecord } = await supabase
+                .from("users")
+                .select("user_id")
+                .eq("user_id", data.user.id)
+                .single();
+
+              if (userRecord) {
+                userRecordExists = true;
+              } else {
+                retries++;
+                await new Promise((resolve) =>
+                  setTimeout(resolve, 200 * retries)
+                ); // Exponential backoff
+              }
+            }
+
+            if (userRecordExists) {
+              // Update the user profile with avatar URL
+              await supabase
+                .from("users")
+                .update({ avatar_url: publicUrl })
+                .eq("user_id", data.user.id);
+            }
           }
         } catch (avatarError) {
           console.error("Avatar upload failed:", avatarError);
@@ -182,11 +213,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               data: { publicUrl },
             } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
-            // Update the user profile with avatar URL
-            await supabase
-              .from("users")
-              .update({ avatar_url: publicUrl })
-              .eq("user_id", data.user.id);
+            // Wait for user record to be created by trigger (retry with backoff)
+            let retries = 0;
+            const maxRetries = 5;
+            let userRecordExists = false;
+
+            while (retries < maxRetries && !userRecordExists) {
+              const { data: userRecord } = await supabase
+                .from("users")
+                .select("user_id")
+                .eq("user_id", data.user.id)
+                .single();
+
+              if (userRecord) {
+                userRecordExists = true;
+              } else {
+                retries++;
+                await new Promise((resolve) =>
+                  setTimeout(resolve, 200 * retries)
+                ); // Exponential backoff
+              }
+            }
+
+            if (userRecordExists) {
+              // Update the user profile with avatar URL
+              await supabase
+                .from("users")
+                .update({ avatar_url: publicUrl })
+                .eq("user_id", data.user.id);
+            }
           }
         } catch (avatarError) {
           console.error("Avatar upload failed:", avatarError);
