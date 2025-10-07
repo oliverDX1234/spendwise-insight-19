@@ -1,27 +1,52 @@
-import { useState } from 'react';
-import { useCategories, CreateCategoryData, Category } from '@/hooks/useCategories';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Edit, Plus, Package } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { EditCategoryDialog } from '@/components/EditCategoryDialog';
-import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
+import { useState } from "react";
+import {
+  useCategories,
+  CreateCategoryData,
+  Category,
+} from "@/hooks/useCategories";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Trash2, Edit, Plus, Package } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { EditCategoryDialog } from "@/components/EditCategoryDialog";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 
 export default function Categories() {
-  const { categories, loading, createCategory, updateCategory, deleteCategory } = useCategories();
+  const {
+    categories,
+    loading,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+  } = useCategories();
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryColor, setNewCategoryColor] = useState('#6B7280');
-  
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("#6B7280");
+
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<Category | null>(
+    null
+  );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const handleCreateCategory = async () => {
@@ -29,7 +54,7 @@ export default function Categories() {
       toast({
         title: "Error",
         description: "Category name is required",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -37,10 +62,10 @@ export default function Categories() {
     try {
       await createCategory({
         name: newCategoryName.trim(),
-        color: newCategoryColor
+        color: newCategoryColor,
       });
-      setNewCategoryName('');
-      setNewCategoryColor('#6B7280');
+      setNewCategoryName("");
+      setNewCategoryColor("#6B7280");
       setIsCreateDialogOpen(false);
     } catch (error) {
       // Error is handled by the hook
@@ -72,8 +97,8 @@ export default function Categories() {
     return <div className="p-6 text-center">Loading categories...</div>;
   }
 
-  const userCategories = categories.filter(cat => !cat.is_predefined);
-  const predefinedCategories = categories.filter(cat => cat.is_predefined);
+  const userCategories = categories.filter((cat) => !cat.is_predefined);
+  const predefinedCategories = categories.filter((cat) => cat.is_predefined);
 
   return (
     <div className="p-6 space-y-6">
@@ -92,8 +117,11 @@ export default function Categories() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="categoryName">Category Name</Label>
+                <Label htmlFor="categoryName">
+                  Category Name
+                </Label>
                 <Input
+                  className="mt-2"
                   id="categoryName"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
@@ -108,22 +136,24 @@ export default function Categories() {
                     type="color"
                     value={newCategoryColor}
                     onChange={(e) => setNewCategoryColor(e.target.value)}
-                    className="w-20 h-10"
+                    className="w-20 h-10 mt-2"
                   />
                   <Input
                     value={newCategoryColor}
                     onChange={(e) => setNewCategoryColor(e.target.value)}
                     placeholder="#6B7280"
+                    className="mt-2"
                   />
                 </div>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCreateDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleCreateCategory}>
-                  Create Category
-                </Button>
+                <Button onClick={handleCreateCategory}>Create Category</Button>
               </div>
             </div>
           </DialogContent>
@@ -155,7 +185,9 @@ export default function Categories() {
                 <TableBody>
                   {userCategories.map((category) => (
                     <TableRow key={category.id}>
-                      <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {category.name}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <div
@@ -169,8 +201,7 @@ export default function Categories() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          <Package className="h-3 w-3 mr-1" />
-                          0 products
+                          <Package className="h-3 w-3 mr-1" />0 products
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -178,8 +209,8 @@ export default function Categories() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleEditCategory(category)}
                           >
@@ -220,7 +251,9 @@ export default function Categories() {
               <TableBody>
                 {predefinedCategories.map((category) => (
                   <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {category.name}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <div
@@ -234,8 +267,7 @@ export default function Categories() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        <Package className="h-3 w-3 mr-1" />
-                        0 products
+                        <Package className="h-3 w-3 mr-1" />0 products
                       </Badge>
                     </TableCell>
                     <TableCell>

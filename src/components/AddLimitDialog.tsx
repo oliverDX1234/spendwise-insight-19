@@ -32,9 +32,12 @@ import { useCategories } from "@/hooks/useCategories";
 const limitSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category_id: z.string().min(1, "Category is required"),
-  amount: z.string().min(1, "Amount is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-    message: "Amount must be a positive number",
-  }),
+  amount: z
+    .string()
+    .min(1, "Amount is required")
+    .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+      message: "Amount must be a positive number",
+    }),
   period_type: z.enum(["weekly", "monthly"], {
     required_error: "Period type is required",
   }),
@@ -48,7 +51,11 @@ interface AddLimitDialogProps {
   onLimitCreated?: () => void;
 }
 
-export function AddLimitDialog({ open, onOpenChange, onLimitCreated }: AddLimitDialogProps) {
+export function AddLimitDialog({
+  open,
+  onOpenChange,
+  onLimitCreated,
+}: AddLimitDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { createLimit } = useLimits();
   const { categories } = useCategories();
@@ -76,7 +83,7 @@ export function AddLimitDialog({ open, onOpenChange, onLimitCreated }: AddLimitD
       onOpenChange(false);
       onLimitCreated?.();
     } catch (error) {
-      console.error('Error creating limit:', error);
+      console.error("Error creating limit:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -102,23 +109,26 @@ export function AddLimitDialog({ open, onOpenChange, onLimitCreated }: AddLimitD
                 <FormItem>
                   <FormLabel>Limit Name</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="e.g., Monthly Groceries Limit" 
-                      {...field} 
+                    <Input
+                      placeholder="e.g., Monthly Groceries Limit"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="category_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
@@ -142,13 +152,13 @@ export function AddLimitDialog({ open, onOpenChange, onLimitCreated }: AddLimitD
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Limit Amount ($)</FormLabel>
+                  <FormLabel>Limit Amount</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="0.00" 
-                      {...field} 
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -162,7 +172,10 @@ export function AddLimitDialog({ open, onOpenChange, onLimitCreated }: AddLimitD
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Period</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select period" />
