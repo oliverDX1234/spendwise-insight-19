@@ -10,6 +10,7 @@ export interface Category {
   user_id: string;
   created_at: string;
   updated_at: string;
+  product_count?: number;
 }
 
 export interface CreateCategoryData {
@@ -26,13 +27,33 @@ export function useCategories() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
         .order('name');
 
-      if (error) throw error;
-      setCategories(data || []);
+      if (categoriesError) throw categoriesError;
+
+      // Fetch product counts for each category
+      const { data: productCounts, error: countError } = await supabase
+        .from('products')
+        .select('category_id');
+
+      if (countError) throw countError;
+
+      // Count products per category
+      const countMap = (productCounts || []).reduce((acc: Record<string, number>, product) => {
+        acc[product.category_id] = (acc[product.category_id] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Add product counts to categories
+      const categoriesWithCounts = (categoriesData || []).map(cat => ({
+        ...cat,
+        product_count: countMap[cat.id] || 0
+      }));
+
+      setCategories(categoriesWithCounts);
       setError(null);
     } catch (err: any) {
       setError(err.message);

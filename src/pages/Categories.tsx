@@ -201,7 +201,8 @@ export default function Categories() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          <Package className="h-3 w-3 mr-1" />0 products
+                          <Package className="h-3 w-3 mr-1" />
+                          {category.product_count || 0} products
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -267,7 +268,8 @@ export default function Categories() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        <Package className="h-3 w-3 mr-1" />0 products
+                        <Package className="h-3 w-3 mr-1" />
+                        {category.product_count || 0} products
                       </Badge>
                     </TableCell>
                     <TableCell>
