@@ -37,7 +37,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSave, isUpdating }:
     if (user) {
       setFullName(user.full_name);
       setRole(user.role);
-      setSubscriptionPlan(user.subscription_plan || "");
+      setSubscriptionPlan(user.subscription_plan || "trial");
     }
   }, [user, open]);
 
@@ -47,7 +47,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSave, isUpdating }:
     const updates: Partial<User> = {
       full_name: fullName,
       role,
-      subscription_plan: subscriptionPlan || null,
+      subscription_plan: subscriptionPlan === "trial" ? null : subscriptionPlan,
     };
 
     onSave({ userId: user.user_id, updates });
@@ -108,7 +108,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSave, isUpdating }:
                 <SelectValue placeholder="Select plan" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Trial</SelectItem>
+                <SelectItem value="trial">Trial</SelectItem>
                 <SelectItem value="premium">Premium</SelectItem>
               </SelectContent>
             </Select>
