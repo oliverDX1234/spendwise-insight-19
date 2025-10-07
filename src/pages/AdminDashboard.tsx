@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { format, subDays, subMonths } from "date-fns";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   Card,
   CardContent,
@@ -46,11 +48,17 @@ import { UserEditDialog } from "@/components/admin/UserEditDialog";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 
 export default function AdminDashboard() {
+  const { isAdmin, isLoading: roleLoading } = useUserRole();
   const { users, isLoading, updateUser, deleteUser, isUpdating, isDeleting } = useUsers();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Redirect non-admin users to dashboard
+  if (!roleLoading && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
   // Generate mock chart data based on users
   const generateRegistrationData = () => {
@@ -134,7 +142,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || roleLoading) {
     return (
       <div className="container mx-auto py-8">
         <div className="animate-pulse space-y-6">

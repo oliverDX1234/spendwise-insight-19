@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -33,13 +33,13 @@ export function UserEditDialog({ user, open, onOpenChange, onSave, isUpdating }:
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>("");
 
   // Reset form when dialog opens/closes or user changes
-  useState(() => {
+  useEffect(() => {
     if (user) {
       setFullName(user.full_name);
       setRole(user.role);
       setSubscriptionPlan(user.subscription_plan || "");
     }
-  });
+  }, [user, open]);
 
   const handleSave = () => {
     if (!user) return;
