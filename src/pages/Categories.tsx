@@ -201,7 +201,7 @@ export default function Categories() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          <Package className="h-3 w-3 mr-1" />
+                          <Package className="h-3 w-4 mr-1" />
                           {category.product_count || 0} products
                         </Badge>
                       </TableCell>
