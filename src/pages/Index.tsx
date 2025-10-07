@@ -27,6 +27,7 @@ import { useLimits } from "@/hooks/useLimits";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   useExpensesAnalytics,
   useCategoriesAnalytics,
@@ -72,6 +73,7 @@ export default function Index() {
     isTrial,
     isLoading: subscriptionLoading,
   } = useSubscription();
+  const { isAdmin, isLoading: roleLoading } = useUserRole();
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [showEditExpense, setShowEditExpense] = useState(false);
@@ -107,7 +109,7 @@ export default function Index() {
   }
 
   // Show loading state while checking auth
-  if (authLoading) {
+  if (authLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -116,6 +118,11 @@ export default function Index() {
         </div>
       </div>
     );
+  }
+
+  // Redirect admin users to admin dashboard
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />;
   }
 
   const handleAddExpense = async (expenseData: CreateExpenseData) => {
